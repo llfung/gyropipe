@@ -1,0 +1,1 @@
+grep "define _Nr" parallel.h | awk '{print $3}'

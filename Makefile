@@ -1,7 +1,10 @@
 INSTDIR		= ./install/
 PROGDIR		= ./program/
 UTILDIR		= ./utils/
+RUNDIR      = ~/runs/$(shell date +%Y%m%d_%H%M%S)
+#RUNCORE		= 4
 UTIL		= prim2matlab
+
 
 TRANSFORM	= fftw3
 MODSOBJ		= io.o meshs.o mpi.o parameters.o \
@@ -9,7 +12,7 @@ MODSOBJ		= io.o meshs.o mpi.o parameters.o \
 
 #COMPILER	= g95 -C  
 #COMPFLAGS	= -cpp -c -O3
-#COMPILER	= ifort -i-dynamic #-C #-static 
+#COMPILER	= ifort #-i-dynamic #-C #-static 
 #COMPFLAGS	= -cpp -c -O3 -heap-arrays 1024 -mcmodel=medium
 #COMPILER	= pgf90 #-C
 #COMPFLAGS	= -Mpreprocess -c -fast #-mcmodel=medium
@@ -17,12 +20,12 @@ MODSOBJ		= io.o meshs.o mpi.o parameters.o \
 #COMPFLAGS	= -cpp -c -O3 -OPT:Ofast -march=opteron -fno-second-underscore
 
 
-COMPILER	= gfortran
+COMPILER	= mpifort
 COMPFLAGS	= -ffree-line-length-none -x f95-cpp-input -c -O3 \
 		  -I/usr/include \
                   #-C #-pg
 LIBS		= \
-		  -L/home/ashley/local/lib \
+		  -L/usr/lib \
 		  cheby.o -lfftw3 -llapack -lnetcdff -lnetcdf \
 		  # -lblas -lcurl
 
@@ -33,7 +36,7 @@ all : 	$(MODSOBJ) $(PROGDIR)main.f90
 
 install : main.out
 	if test ! -d $(INSTDIR); then mkdir -p $(INSTDIR); fi
-	mv ./main.out $(INSTDIR)
+	cp ./main.out $(INSTDIR)
 	date > $(INSTDIR)/main.info
 	echo $(HOSTNAME) >> $(INSTDIR)/main.info
 	pwd >> $(INSTDIR)/main.info
@@ -45,7 +48,17 @@ install : main.out
 util : 	$(MODSOBJ) $(UTILDIR)/$(UTIL).f90
 	$(COMPILER) $(COMPFLAGS) $(UTILDIR)/$(UTIL).f90
 	$(COMPILER) -o ./$(UTIL).out $(UTIL).o $(MODSOBJ) $(LIBS)
-
+#------------------------------------------------------------------------	
+run :
+	cp state.cdf.in $(INSTDIR)
+	mv $(INSTDIR) $(RUNDIR)
+	nohup mpirun -np $(shell ./num_core.sh) -wd $(RUNDIR) $(RUNDIR)/main.out > $(RUNDIR)/OUT 2> $(RUNDIR)/OUT.err &
+runall :
+	make clean
+	make
+	make install
+	make run
+	make clean
 #------------------------------------------------------------------------
 clean :
 	rm -f *.o *.mod *.d *.il core *.out
