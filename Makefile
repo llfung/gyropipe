@@ -2,9 +2,8 @@ INSTDIR		= ./install/
 PROGDIR		= ./program/
 UTILDIR		= ./utils/
 RUNDIR      = ~/runs/$(shell date +%Y%m%d_%H%M%S)
-#RUNCORE		= 4
 UTIL		= prim2matlab
-
+numcore := $(shell ./num_core.sh)
 
 TRANSFORM	= fftw3
 MODSOBJ		= io.o meshs.o mpi.o parameters.o \
@@ -52,13 +51,19 @@ util : 	$(MODSOBJ) $(UTILDIR)/$(UTIL).f90
 run :
 	cp state.cdf.in $(INSTDIR)
 	mv $(INSTDIR) $(RUNDIR)
-	nohup mpirun -np $(shell ./num_core.sh) -wd $(RUNDIR) $(RUNDIR)/main.out > $(RUNDIR)/OUT 2> $(RUNDIR)/OUT.err &
+ifeq (${numcore},1)
+	(cd $(RUNDIR); nohup $(RUNDIR)/main.out > $(RUNDIR)/OUT 2> $(RUNDIR)/OUT.err &)
+else
+	nohup mpirun -np ${numcore} -wd $(RUNDIR) $(RUNDIR)/main.out > $(RUNDIR)/OUT 2> $(RUNDIR)/OUT.err &
+endif
+
 runall :
 	make clean
 	make
 	make install
 	make run
 	make clean
+
 #------------------------------------------------------------------------
 clean :
 	rm -f *.o *.mod *.d *.il core *.out
