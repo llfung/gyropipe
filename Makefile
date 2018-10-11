@@ -18,8 +18,11 @@ MODSOBJ		= io.o meshs.o mpi.o parameters.o \
 #COMPILER	= pathf90 #-pg -C
 #COMPFLAGS	= -cpp -c -O3 -OPT:Ofast -march=opteron -fno-second-underscore
 
-
+ifeq (${numcore},1)
+COMPILER	= gfortran
+else
 COMPILER	= mpifort
+endif
 COMPFLAGS	= -ffree-line-length-none -x f95-cpp-input -c -O3 \
 		  -I/usr/include \
                   #-C #-pg
