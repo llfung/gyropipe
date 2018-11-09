@@ -28,7 +28,7 @@ COMPFLAGS	= -ffree-line-length-none -x f95-cpp-input -c -O3 \
                   #-C #-pg
 LIBS		= \
 		  -L/usr/lib \
-		  cheby.o -lfftw3 -llapack -lnetcdff -lnetcdf \
+		  cheby.o -lfftw3 -llapack -lnetcdff \
 		  # -lblas -lcurl
 
 #------------------------------------------------------------------------
