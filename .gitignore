@@ -44,3 +44,6 @@ main.out
 OUT
 OUT.err
 HOST
+
+# Playground
+playground/*
