@@ -17,7 +17,7 @@
    double precision :: tim_corr_dt
    double precision :: tim_cfl_dt
    integer          :: tim_cfl_dir
-   logical          :: tim_new_dt
+   logical          :: tim_new_dt   ! If we have updated the timestep from last time
    integer          :: tim_pcn
 
  contains
@@ -27,8 +27,8 @@
 !  possibly overwritten by loading a previously saved state
 !------------------------------------------------------------------------
    subroutine tim_precompute()
-      tim_t       = d_time
-      tim_dt      = d_timestep
+      tim_t       = d_time     ! Start time. If <0, use state.cdf.in time.
+      tim_dt      = d_timestep ! Will be overwritten in io_load_state()
       tim_dterr   = 0d0
       tim_it      = 0
       tim_step    = 0
@@ -224,15 +224,15 @@
 !-------------------------------------------------------------------------
    subroutine tim_check_cgce()
       double precision, save :: lasterr
-      
-      if(tim_it==1) then
+
+      if(tim_it==1) then                                            ! Just come out from 1st Corrector step
          tim_corr_dt = tim_dt * dsqrt( d_dterr/tim_dterr )
          lasterr = 1d99
       end if         
 
       if(tim_dt<1d-9 .and. tim_step>30) then
          if(mpi_rnk==0) print*, 'tim_check_cgce: dt --> 0 !!!?'
-         tim_step = i_maxtstep-1
+         tim_step = i_maxtstep-1                                    ! Exit the run
          tim_it = 0
       else if(tim_it==tim_pcn) then
          tim_it = 0
@@ -242,12 +242,12 @@
          end if
       else if(tim_it>10) then
          if(mpi_rnk==0) print*, 'tim_check_cgce: too many its!!!'
-         tim_step = i_maxtstep-1
+         tim_step = i_maxtstep-1                                    ! Exit the run
          tim_it = 0
       else if(tim_dterr>lasterr) then
          if(mpi_rnk==0) print*, 'tim_check_cgce: increasing error!!!'
-         if(tim_dterr>2d0*d_dterr) tim_step = i_maxtstep-1
-         if(tim_dterr<2d0*d_dterr) tim_corr_dt = tim_dt/(1d1*d_courant)
+         if(tim_dterr>2d0*d_dterr) tim_step = i_maxtstep-1          ! Exit the run
+         if(tim_dterr<2d0*d_dterr) tim_corr_dt = tim_dt/(1d1*d_courant)   ! Next time step limit: current step but replaced courant with forced courant=0.1
          tim_it = 0
       else if(tim_dterr>d_dterr) then
          lasterr = tim_dterr
@@ -270,14 +270,15 @@
    subroutine tim_new_tstep()
       double precision :: dt
       integer, save :: i = 0
-
-      dt = min(tim_dt*1.11d0, d_maxdt)
+      ! Only allow time step to increase at rate of +11% per iteration
+      dt = min(tim_dt*1.11d0, d_maxdt)                          ! Limit to max_dt and (last time step+11%)
       if(tim_step==0d0 .and. tim_corr_dt==0d0)  &
-                           dt = min(dt, tim_cfl_dt*0.1d0)
-      if(tim_cfl_dt >0d0)  dt = min(dt, tim_cfl_dt*d_courant)
-      if(tim_corr_dt>0d0)  dt = min(dt, tim_corr_dt*0.95d0)
-      
+                           dt = min(dt, tim_cfl_dt*0.1d0)       ! At start of iteration, take Courant = 0.1
+      if(tim_cfl_dt >0d0)  dt = min(dt, tim_cfl_dt*d_courant)   ! Use Courant number
+      if(tim_corr_dt>0d0)  dt = min(dt, tim_corr_dt*0.95d0)     ! Also limit time step small enough for corrector iteration residue to be small
+
       i = i - 1
+      ! Do not change step if within -5% of last iteration or +10% of last iteration
       tim_new_dt = ( dt<tim_dt*0.95d0  &
               .or.  (dt>tim_dt*1.10d0 .and. i<0)  &
               .or.  (dt==d_maxdt .and. tim_dt<dt .and. i<0) )

@@ -105,7 +105,7 @@
 
 
 !-------------------------------------------------------------------------
-!  null function
+!  null function (For putting in util() functions.)
 !-------------------------------------------------------------------------
    subroutine var_null(flag)
       integer, intent(in), optional :: flag
@@ -628,7 +628,7 @@
 
 
 !------------------------------------------------------------------------
-!  get index of nearest point
+!  get index of nearest point (used by util)
 !------------------------------------------------------------------------
    subroutine var_nearestpt(x, ix)
       double precision, intent(in)  :: x(3)
@@ -658,7 +658,7 @@
 
 
 !------------------------------------------------------------------------
-!  trilinear interpolation about the nearest point
+!  trilinear interpolation about the nearest point (used by util)
 !------------------------------------------------------------------------
    subroutine var_interpnearpt(x,ix,p, c)
       double precision, intent(in)  :: x(3)

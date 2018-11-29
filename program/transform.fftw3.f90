@@ -61,7 +61,7 @@
 
 
 !-------------------------------------------------------------------------
-!  convert collocated -> physical space
+!  convert  collocated -> physical space
 !-------------------------------------------------------------------------
    subroutine tra_coll2phys(c,p, c2,p2, c3,p3)
       type (coll), intent(in)  :: c
@@ -82,7 +82,7 @@
 
 
 !-------------------------------------------------------------------------
-!  convert collocated -> physical space
+!  convert  physical space -> collocated
 !-------------------------------------------------------------------------
    subroutine tra_phys2coll(p,c, p2,c2, p3,c3)
       type (phys), intent(in)  :: p

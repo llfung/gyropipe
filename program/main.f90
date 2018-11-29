@@ -16,35 +16,35 @@
    
       						! main loop
    do while(.not.terminate())
-
+                  ! Predictor Step
       call vel_imposesym()
       call vel_transform()
       call vel_nonlinear()
       call var_null(2)
       if(d_timestep<0d0) then
-         call vel_maxtstep()
-         call tim_new_tstep()
-         if(tim_new_dt)  &
-            call vel_matrices()
-      end if        
-      call var_null(1)
-      call io_write2files()
-      call vel_predictor()
+         call vel_maxtstep()    ! Automated timestep size calculation->tim_cfl_dt
+         call tim_new_tstep()   ! Other conditions that limits the timestep size
+         if(tim_new_dt)  &      ! If we have used a new timestpe compared to the last one
+            call vel_matrices() !    precomputation of matrices for timestepping
+      end if
+      call var_null(1)          ! where you put util()
+      call io_write2files()     ! I/O files
+      call vel_predictor()      ! vel_step() called inside (the main stepping algorithm)
       tim_it = 1
-
+                   ! Corrector Step iteration
       do while(tim_it/=0)
          call vel_transform()
          call vel_nonlinear()
-         call var_null(2)
-         call vel_corrector()
-         call tim_check_cgce()
+         call var_null(2)       ! where you put util()
+         call vel_corrector()   ! vel_step() called inside (the main stepping algorithm)
+         call tim_check_cgce()  ! check if we can exit corrector iter. If true, tim_it=0.
       end do
 
       tim_t    = tim_t    + tim_dt
       tim_step = tim_step + 1
 
    end do
-      						! end main loop   
+      						! end main loop
 
    call cleanup()
    stop

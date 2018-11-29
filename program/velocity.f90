@@ -354,22 +354,23 @@
 !------------------------------------------------------------------------
    subroutine vel_step()
 				     	! get rhs = A u_ + N
-      call vel_rt2pm(vel_Nr,vel_Nt, c1,c2)
-      call vel_rt2pm(ur_,ut_, vel_ur,vel_ut)
-      call tim_meshmult(1,Ltp,vel_ur,c1,  vel_ur)
-      call tim_meshmult(1,Ltm,vel_ut,c2,  vel_ut)
-      call tim_meshmult(0,Ltz,uz_,vel_Nz, vel_uz)
-      call vel_adjPPE(1)
-        				! invert
+      call vel_rt2pm(vel_Nr,vel_Nt, c1,c2)        ! Transform iterating Nr,Nt into Np,Nm
+      call vel_rt2pm(ur_,ut_, vel_ur,vel_ut)      ! Transform base ur,ut into up,um
+      call tim_meshmult(1,Ltp,vel_ur,c1,  vel_ur) ! LHS: Ltp*vel_ur (in p) + c1 -> vel_ur (in p)
+      call tim_meshmult(1,Ltm,vel_ut,c2,  vel_ut) ! LHS: Ltm*vel_ut (in m) + c2 -> vel_ut (in m)
+      call tim_meshmult(0,Ltz,uz_,vel_Nz, vel_uz) ! LHS: Ltz*uz_ + vel_Nz -> vel_uz
+      call vel_adjPPE(1)                          ! Apply BC
+        				! Zero out BC
       call tim_zerobc(vel_ur)
       call tim_zerobc(vel_ut)
       call tim_zerobc(vel_uz)
+                ! Invert
       call tim_lumesh_invert(0,LDp, vel_ur)
       call tim_lumesh_invert(0,LDm, vel_ut)
       call tim_lumesh_invert(0,LDz, vel_uz)
-      call vel_adjPPE(2)
-      call vel_pm2rt(vel_ur,vel_ut, vel_ur,vel_ut)
-         				! 
+      call vel_adjPPE(2)                           ! Apply BC
+      call vel_pm2rt(vel_ur,vel_ut, vel_ur,vel_ut) ! Transform resulting up,um back into ur,ur
+         				! Adjust Flux if needed
       call vel_adjustFlux(1)
 
       if(mpi_rnk==0) then
@@ -386,13 +387,17 @@
 !  predictor with euler nonlinear terms
 !------------------------------------------------------------------------
    subroutine vel_predictor()
-
+      ! Copy Velocity ur,ut,uz and NonLinear terms Nr,Nt,Nz
+      ! to the *_ variables (for corrector use)
       call var_coll_copy(vel_ur, ur_)
       call var_coll_copy(vel_ut, ut_)
       call var_coll_copy(vel_uz, uz_)
       call var_coll_copy(vel_Nr, Nr_)
       call var_coll_copy(vel_Nt, Nt_)
       call var_coll_copy(vel_Nz, Nz_)
+      ! Non-linear term is explicit. Directly used, no further computation needed
+
+      ! Compute the predictor step -> vel_ur,vel_ut,vel_uz
       call vel_step()
       
    end subroutine vel_predictor
@@ -403,19 +408,23 @@
 !------------------------------------------------------------------------
    subroutine vel_corrector()
       type (coll) :: r,t,z
-
+      ! Copy Velocity ur,ut,uz and NonLinear terms Nr,Nt,Nz
+      ! to the r,t,z variables (for f_corr calculation use)
       call var_coll_copy(vel_ur, r)
       call var_coll_copy(vel_ut, t)
       call var_coll_copy(vel_uz, z)
+      ! Take the CN2 approximation for the non-linear terms
       call tim_nlincorr(Nr_, vel_Nr)
       call tim_nlincorr(Nt_, vel_Nt)
       call tim_nlincorr(Nz_, vel_Nz)
+      ! Compute the corrector step -> vel_ur,vel_ut,vel_uz
       call vel_step()
-
+        ! Calculate f_corr (ie. tim_dterr)
+        ! by taking the difference between result and last iter corrector step
       call var_coll_sub(vel_ur, r)
       call var_coll_sub(vel_ut, t)
       call var_coll_sub(vel_uz, z)
-      call tim_measurecorr(r,t,z)
+      call tim_measurecorr(r,t,z) ! Calculate tim_dterr
 
    end subroutine vel_corrector
 

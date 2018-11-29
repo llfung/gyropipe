@@ -34,8 +34,8 @@
    integer,          parameter :: i_maxtstep    = -1 
    double precision, parameter :: d_maxt        = -1d0
    double precision, parameter :: d_cpuhours    = 1d99 !90d0
-   double precision, parameter :: d_time        = 0d0 !-1d0 !0d0
-   double precision, parameter :: d_timestep    = 0.01d0 !-1d0
+   double precision, parameter :: d_time        = 0d0 !-1d0
+   double precision, parameter :: d_timestep    = -1d0 !0.01d0
    double precision, parameter :: d_maxdt       = 1d99
    double precision, parameter :: d_dterr       = 1d-5 !1d99
    double precision, parameter :: d_courant     = 0.5d0
