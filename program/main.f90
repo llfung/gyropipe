@@ -13,7 +13,7 @@
    real :: d_start, d_stop
 
    call initialise()
-   
+
       						! main loop
    do while(.not.terminate())
                   ! Predictor Step
@@ -22,7 +22,6 @@
       call temp_transform()
       call non_velocity()
       call non_temperature()
-      call vel_nonlinear()
       call var_null(2)
       if(d_timestep<0d0) then
          call vel_maxtstep()    ! Automated timestep size calculation->tim_cfl_dt
@@ -34,6 +33,7 @@
       call var_null(1)          ! where you put util()
       call io_write2files()     ! I/O files
       call vel_predictor()      ! vel_step() called inside (the main stepping algorithm)
+      call temp_predictor()
       tim_it = 1
                    ! Corrector Step iteration
       do while(tim_it/=0)
@@ -64,10 +64,10 @@
 !-------------------------------------------------------------------------
    logical function terminate()
       logical :: file_exist
-            
+
       if(mpi_rnk==0) then
          terminate = .false.
-      
+
          if(tim_step==i_maxtstep) then
             terminate = .true.
             print*, 'maxtstep reached!'
@@ -120,7 +120,7 @@
       call temp_precompute()
       call non_precompute()
       call  io_precompute()
-   
+
       if(mpi_rnk==0)  print*, 'loading state...'
       tim_dt = 1d99
       call io_load_state()
@@ -139,7 +139,7 @@
          close(99)
          print*, 'timestepping.....'
       end if
-      
+
       call clk_time(d_start)
    end subroutine initialise
 
@@ -148,7 +148,7 @@
 !-------------------------------------------------------------------------
    subroutine cleanup()
       logical :: file_exist
-   
+
       if(mpi_rnk==0) then
          print*, 'cleanup...'
          call clk_time(d_stop)
@@ -157,9 +157,9 @@
          print*, ' CPU time  = ', int((d_stop-d_start)/6d1), ' mins.'
 #else
          print*, ' WALL time = ', int((d_stop-d_start)/6d1), ' mins.'
-#endif 
+#endif
       end if
-      
+
       call io_save_state()
       call io_closefiles()
 
@@ -167,7 +167,7 @@
          inquire(file='RUNNING', exist=file_exist)
          if(file_exist) open(99, file='RUNNING')
          if(file_exist) close(99, status='delete')
-      end if      
+      end if
 
 #ifdef _MPI
       call mpi_barrier(mpi_comm_world, mpi_er)
@@ -191,7 +191,7 @@
       t = (real(ct)+real(ctmx)*wrap)/real(ctrt)
 #endif
    end subroutine clk_time
-         
+
 !*************************************************************************
  END PROGRAM MAIN
 !*************************************************************************

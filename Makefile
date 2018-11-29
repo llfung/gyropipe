@@ -6,12 +6,12 @@ UTIL		= prim2matlab
 numcore := $(shell ./num_core.sh)
 
 TRANSFORM	= fftw3
-MODSOBJ		= io.o meshs.o mpi.o parameters.o \
-		  timestep.o transform.o variables.o velocity.o
+MODSOBJ		= io.o meshs.o mpi.o nonlinear.o parameters.o \
+		  temperature.o timestep.o transform.o variables.o velocity.o
 
-#COMPILER	= g95 -C  
+#COMPILER	= g95 -C
 #COMPFLAGS	= -cpp -c -O3
-#COMPILER	= ifort #-i-dynamic #-C #-static 
+#COMPILER	= ifort #-i-dynamic #-C #-static
 #COMPFLAGS	= -cpp -c -O3 -heap-arrays 1024 -mcmodel=medium
 #COMPILER	= pgf90 #-C
 #COMPFLAGS	= -Mpreprocess -c -fast #-mcmodel=medium
@@ -50,7 +50,7 @@ install : main.out
 util : 	$(MODSOBJ) $(UTILDIR)/$(UTIL).f90
 	$(COMPILER) $(COMPFLAGS) $(UTILDIR)/$(UTIL).f90
 	$(COMPILER) -o ./$(UTIL).out $(UTIL).o $(MODSOBJ) $(LIBS)
-#------------------------------------------------------------------------	
+#------------------------------------------------------------------------
 run :
 	cp state.cdf.in $(INSTDIR)
 	mv $(INSTDIR) $(RUNDIR)
@@ -72,7 +72,7 @@ clean :
 	rm -f *.o *.mod *.d *.il core *.out
 
 #------------------------------------------------------------------------
-io.o : $(PROGDIR)io.f90 velocity.o 
+io.o : $(PROGDIR)io.f90 temperature.o velocity.o
 	$(COMPILER) $(COMPFLAGS) $(PROGDIR)io.f90
 
 meshs.o : $(PROGDIR)meshs.f90 parameters.o mpi.o
@@ -82,8 +82,14 @@ meshs.o : $(PROGDIR)meshs.f90 parameters.o mpi.o
 mpi.o : $(PROGDIR)mpi.f90 parallel.h
 	$(COMPILER) $(COMPFLAGS) $(PROGDIR)mpi.f90
 
+nonlinear.o : $(PROGDIR)nonlinear.f90 temperature.o velocity.o
+		$(COMPILER) $(COMPFLAGS) $(PROGDIR)nonlinear.f90
+
 parameters.o : $(PROGDIR)parameters.f90 parallel.h
 	$(COMPILER) $(COMPFLAGS) $(PROGDIR)parameters.f90
+
+temperature.o : $(PROGDIR)temperature.f90 timestep.o transform.o
+		$(COMPILER) $(COMPFLAGS) $(PROGDIR)temperature.f90
 
 timestep.o : $(PROGDIR)timestep.f90 variables.o
 	$(COMPILER) $(COMPFLAGS) $(PROGDIR)timestep.f90
@@ -97,4 +103,3 @@ variables.o : $(PROGDIR)variables.f90 meshs.o
 
 velocity.o : $(PROGDIR)velocity.f90 timestep.o transform.o
 	$(COMPILER) $(COMPFLAGS) $(PROGDIR)velocity.f90
-

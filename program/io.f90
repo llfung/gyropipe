@@ -111,10 +111,10 @@
             if(mpi_rnk==0) open(99, file='PRECOMPUTING')
             if(mpi_rnk==0) close(99, status='delete')
             if(mpi_rnk==0) print*, 'state file not found!: '//io_statefile
-   #ifdef _MPI
+#ifdef _MPI
             call mpi_barrier(mpi_comm_world, mpi_er)
             call mpi_finalize(mpi_er)
-   #endif
+#endif
             stop 'io_load_state: file not found!'
          end if
 
@@ -170,9 +170,9 @@
          deallocate(r)
 
          e=nf90_close(f)
-   #ifdef _MPI
+#ifdef _MPI
          call mpi_barrier(mpi_comm_world, mpi_er)
-   #endif
+#endif
 
       end subroutine io_load_state
 
