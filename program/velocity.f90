@@ -35,7 +35,7 @@
    type (coll),   private :: Nr_,Nt_,Nz_,ur_,ut_,uz_
 
    type (coll), private :: c1,c2,c3
-   
+
  contains
 
 !------------------------------------------------------------------------
@@ -55,7 +55,7 @@
 !------------------------------------------------------------------------
 !   symmetric, A(th)=A(-th);  s&r, A(th,z)=A(-th,z+L/2)
 !------------------------------------------------------------------------
-   subroutine vel_imposesym()   
+   subroutine vel_imposesym()
       double precision :: a
       integer :: n
       _loop_km_vars
@@ -68,11 +68,11 @@
       if(b_shiftrott)  &
          call var_imposesym(3, vel_ur,vel_ut,vel_uz)
 
-   end subroutine vel_imposesym 
+   end subroutine vel_imposesym
 
 
 !------------------------------------------------------------------------
-!  convert 
+!  convert
 !------------------------------------------------------------------------
    subroutine vel_rt2pm(r,t, up,um)
       type (coll), intent(in)  :: r,t
@@ -109,7 +109,7 @@
          t%Im(:,nh) = -0.5d0 * (pRe - mRe)
       _loop_km_end
    end subroutine vel_pm2rt
-   
+
 
 !------------------------------------------------------------------------
 !  precomputation of matrices for timestepping
@@ -124,7 +124,7 @@
 
 			! lhs matrices for uz and u+,u-
       d1 =  1d0/tim_dt
-      d2 = -d_implicit*vel_nu/d_Re 
+      d2 = -d_implicit*vel_nu/d_Re
       call tim_lumesh_init( 1,0,d1,d2, LDp)
       call tim_lumesh_init(-1,0,d1,d2, LDm)
       call tim_lumesh_init( 0,0,d1,d2, LDz)
@@ -139,9 +139,9 @@
          		! get influence matrices
       call vel_adjustFlux(0)
       call vel_adjPPE(0)
-      
+
    end subroutine vel_matrices
-   
+
 
 !------------------------------------------------------------------------
 !  adjust flux if fixed; fix to 1/2, i.e. disturbance has zero mean flux
@@ -150,7 +150,7 @@
       integer, intent(in) :: F
       double precision, save :: Ui(i_N), d1,d2,d3
       integer :: info
-      
+
       if(.not.b_const_flux) return
       if(mpi_rnk/=0) return
 
@@ -162,7 +162,7 @@
          if(info/=0) stop 'vel_adjustFlux: err 1'
          d1 = 2d0*dot_product(Ui, mes_D%intrdr)
          if(d1==0d0) stop 'vel_adjustFlux: err 2'
-      
+
       else if(F==1) then
          d2 = 2d0*dot_product(vel_uz%Re(:,0), mes_D%intrdr)
          d3 = -d2/d1
@@ -183,7 +183,7 @@
       double precision :: BRe(4,0:i_pH1),BIm(4,0:i_pH1), aR(4),aI(4)
       integer :: j
       _loop_km_vars
-      
+
       if(F==0) then                             ! precompute, get U
          if(.not.allocated(U))  &
             allocate( U(i_N,0:i_pH1,6) )
@@ -208,6 +208,12 @@
                call tim_lumesh_invert(1,LNp, c1)
                call var_coll_grad(c1, c1,c2,c3)
                call vel_rt2pm(c1,c2, c1,c2)
+               call tim_zerobc(c1)
+               call tim_zerobc(c2)
+               call tim_zerobc(c3)
+               call tim_lumesh_invert(0,LDp, c1)
+               call tim_lumesh_invert(0,LDm, c2)
+               call tim_lumesh_invert(0,LDz, c3)
                U(:,:,4) = c1%Re
                U(:,:,5) = c2%Re
                U(:,:,6) = c3%Im
@@ -254,51 +260,38 @@
 
    end subroutine vel_adjPPE
 
-!- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+!- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
    subroutine vel_evalBC(up,um,uz, BRe,BIm)
       type (coll),      intent(in)  :: up,um,uz
       double precision, intent(out) :: BRe(4,0:i_pH1), BIm(4,0:i_pH1)
-      double precision :: drRe,drIm, urRe,urIm, utRe,utIm, uzRe,uzIm
-      double precision :: d, s, a_, b(0:i_M*i_Mp)
-      integer :: n,m_
+      double precision :: urRe(1+i_KL),urIm(1+i_KL), drRe,drIm
       _loop_km_vars
-      
+
       _loop_km_begin
-         if(k==0 .and. m==0) cycle
-         m_ = m*i_Mp
-         a_ = d_alpha*k
-         n = i_N
+      ! if u=0, div(u)=dr(u_r)
+       urRe = 0.5d0*(up%Re(i_N-i_KL:i_N,nh)+um%Re(i_N-i_KL:i_N,nh))
+       urIm = 0.5d0*(up%Im(i_N-i_KL:i_N,nh)+um%Im(i_N-i_KL:i_N,nh))
+       drRe = dot_product(mes_D%dr1(:,1), urRe)
+       drIm = dot_product(mes_D%dr1(:,1), urIm)
 
-         urRe =  0.5d0 * (up%Re(n,nh) + um%Re(n,nh))
-         urIm =  0.5d0 * (up%Im(n,nh) + um%Im(n,nh))
-         utRe =  0.5d0 * (up%Im(n,nh) - um%Im(n,nh))
-         utIm = -0.5d0 * (up%Re(n,nh) - um%Re(n,nh))
-         uzRe =  uz%Re(n,nh)
-         uzIm =  uz%Im(n,nh)
-         drRe =  0.5d0 * dot_product(  &
-            mes_D%dr1(:,1), up%Re(i_N-i_KL:i_N,nh)+um%Re(i_N-i_KL:i_N,nh))
-         drIm =  0.5d0 * dot_product(  &
-            mes_D%dr1(:,1), up%Im(i_N-i_KL:i_N,nh)+um%Im(i_N-i_KL:i_N,nh))
-            
-         BRe(1,nh) = up%Re(n,nh)
-         BIm(1,nh) = up%Im(n,nh)
-         BRe(2,nh) = um%Re(n,nh)
-         BIm(2,nh) = um%Im(n,nh)
-         BRe(3,nh) = -uzIm
-         BIm(3,nh) =  uzRe
-         d = mes_D%r(n,-1)
-         BRe(4,nh) = urRe*d + drRe - d*m_*utIm - a_*uzIm
-         BIm(4,nh) = urIm*d + drIm + d*m_*utRe + a_*uzRe
-      _loop_km_end
+       BRe(1,nh) =  up%Re(i_N,nh)
+       BIm(1,nh) =  up%Im(i_N,nh)
+       BRe(2,nh) =  um%Re(i_N,nh)
+       BIm(2,nh) =  um%Im(i_N,nh)
+       BRe(3,nh) = -uz%Im(i_N,nh)
+       BIm(3,nh) =  uz%Re(i_N,nh)
+       BRe(4,nh) =  drRe
+       BIm(4,nh) =  drIm
+    _loop_km_end
 
-   end subroutine vel_evalBC
+ end subroutine vel_evalBC
 
 
 !------------------------------------------------------------------------
 !  Evaluate in physical space  u  and  curl(u)
 !------------------------------------------------------------------------
    subroutine vel_transform()
-      
+
       call tra_coll2phys(vel_ur,vel_r, vel_ut,vel_t, vel_uz,vel_z)
 
       call var_coll_curl(vel_ur,vel_ut,vel_uz, c1,c2,c3)
@@ -310,44 +303,44 @@
 !-------------------------------------------------------------------------
 !  nonlinear terms for velocity
 !------------------------------------------------------------------------
-   subroutine vel_nonlinear()
-      type (phys) :: p1,p2,p3
-         			! advection  u x curlu
-      p1%Re = vel_t%Re*vel_curlz%Re - vel_z%Re*vel_curlt%Re
-      p2%Re = vel_z%Re*vel_curlr%Re - vel_r%Re*vel_curlz%Re
-      p3%Re = vel_r%Re*vel_curlt%Re - vel_t%Re*vel_curlr%Re
-      call tra_phys2coll(p1,vel_Nr, p2,vel_Nt, p3,vel_Nz)
-      
-      call vel_addHPF()
-
-   end subroutine vel_nonlinear
+   ! subroutine vel_nonlinear()
+   !    type (phys) :: p1,p2,p3
+   !       			! advection  u x curlu
+   !    p1%Re = vel_t%Re*vel_curlz%Re - vel_z%Re*vel_curlt%Re
+   !    p2%Re = vel_z%Re*vel_curlr%Re - vel_r%Re*vel_curlz%Re
+   !    p3%Re = vel_r%Re*vel_curlt%Re - vel_t%Re*vel_curlr%Re
+   !    call tra_phys2coll(p1,vel_Nr, p2,vel_Nt, p3,vel_Nz)
+   !
+   !    call vel_addHPF()
+   !
+   ! end subroutine vel_nonlinear
 
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-   subroutine vel_addHPF()
-      double precision :: a(i_N), b(i_N)
-      _loop_km_vars
-                  			! force from background HPF
-      b = -vel_Up
-      _loop_km_begin
-         a = d_alpha*k * vel_U
-         vel_Nr%Re(:,nh) = vel_Nr%Re(:,nh) + a*vel_ur%Im(:,nh)
-         vel_Nr%Im(:,nh) = vel_Nr%Im(:,nh) - a*vel_ur%Re(:,nh)
-         vel_Nt%Re(:,nh) = vel_Nt%Re(:,nh) + a*vel_ut%Im(:,nh)
-         vel_Nt%Im(:,nh) = vel_Nt%Im(:,nh) - a*vel_ut%Re(:,nh)
-         vel_Nz%Re(:,nh) = vel_Nz%Re(:,nh) + a*vel_uz%Im(:,nh)  &
-                                           + b*vel_ur%Re(:,nh) 
-         vel_Nz%Im(:,nh) = vel_Nz%Im(:,nh) - a*vel_uz%Re(:,nh)  & 
-                                           + b*vel_ur%Im(:,nh)
-      _loop_km_end
-       					! additional pressure if fixed flx
-      if(b_const_flux .and. mpi_rnk==0) then
-         vel_Pr0 = dot_product(vel_uz%Re(i_N-i_KL:,0),mes_D%dr1(:,1))
-         vel_Pr0 = vel_Pr0/(-2d0)
-         vel_Nz%Re(:,0) = vel_Nz%Re(:,0) + 4d0*vel_Pr0/d_Re
-      end if
+   ! subroutine vel_addHPF()
+   !    double precision :: a(i_N), b(i_N)
+   !    _loop_km_vars
+   !                			! force from background HPF
+   !    b = -vel_Up
+   !    _loop_km_begin
+   !       a = d_alpha*k * vel_U
+   !       vel_Nr%Re(:,nh) = vel_Nr%Re(:,nh) + a*vel_ur%Im(:,nh)
+   !       vel_Nr%Im(:,nh) = vel_Nr%Im(:,nh) - a*vel_ur%Re(:,nh)
+   !       vel_Nt%Re(:,nh) = vel_Nt%Re(:,nh) + a*vel_ut%Im(:,nh)
+   !       vel_Nt%Im(:,nh) = vel_Nt%Im(:,nh) - a*vel_ut%Re(:,nh)
+   !       vel_Nz%Re(:,nh) = vel_Nz%Re(:,nh) + a*vel_uz%Im(:,nh)  &
+   !                                         + b*vel_ur%Re(:,nh)
+   !       vel_Nz%Im(:,nh) = vel_Nz%Im(:,nh) - a*vel_uz%Re(:,nh)  &
+   !                                         + b*vel_ur%Im(:,nh)
+   !    _loop_km_end
+   !     					! additional pressure if fixed flx
+   !    if(b_const_flux .and. mpi_rnk==0) then
+   !       vel_Pr0 = dot_product(vel_uz%Re(i_N-i_KL:,0),mes_D%dr1(:,1))
+   !       vel_Pr0 = vel_Pr0/(-2d0)
+   !       vel_Nz%Re(:,0) = vel_Nz%Re(:,0) + 4d0*vel_Pr0/d_Re
+   !    end if
+   !
+   ! end subroutine vel_addHPF
 
-   end subroutine vel_addHPF
-   
 
 !------------------------------------------------------------------------
 !  Advance equations one timestep.
@@ -379,10 +372,10 @@
          vel_ut%Im(:,0) = 0d0
          vel_uz%Im(:,0) = 0d0
       end if
-            
+
    end subroutine vel_step
-   
-   
+
+
 !------------------------------------------------------------------------
 !  predictor with euler nonlinear terms
 !------------------------------------------------------------------------
@@ -399,7 +392,7 @@
 
       ! Compute the predictor step -> vel_ur,vel_ut,vel_uz
       call vel_step()
-      
+
    end subroutine vel_predictor
 
 
@@ -428,7 +421,7 @@
 
    end subroutine vel_corrector
 
-   
+
 !------------------------------------------------------------------------
 !  get cfl max dt due to flow field
 !------------------------------------------------------------------------
@@ -470,7 +463,7 @@
       if(tim_cfl_dt==dt(1)) tim_cfl_dir=1
       if(tim_cfl_dt==dt(2)) tim_cfl_dir=2
       if(tim_cfl_dt==dt(3)) tim_cfl_dir=3
-      
+
    end subroutine vel_maxtstep
 
 

@@ -7,7 +7,7 @@
 #include "../parallel.h"
  PROGRAM MAIN
 !*************************************************************************
-   use velocity
+   use nonlinear
    use io
    implicit none
    real :: d_start, d_stop
@@ -19,6 +19,9 @@
                   ! Predictor Step
       call vel_imposesym()
       call vel_transform()
+      call temp_transform()
+      call non_velocity()
+      call non_temperature()
       call vel_nonlinear()
       call var_null(2)
       if(d_timestep<0d0) then
@@ -26,6 +29,7 @@
          call tim_new_tstep()   ! Other conditions that limits the timestep size
          if(tim_new_dt)  &      ! If we have used a new timestpe compared to the last one
             call vel_matrices() !    precomputation of matrices for timestepping
+            call temp_matrices()
       end if
       call var_null(1)          ! where you put util()
       call io_write2files()     ! I/O files
@@ -34,9 +38,12 @@
                    ! Corrector Step iteration
       do while(tim_it/=0)
          call vel_transform()
-         call vel_nonlinear()
+         call temp_transform()
+         call non_velocity()
+         call non_temperature()
          call var_null(2)       ! where you put util()
          call vel_corrector()   ! vel_step() called inside (the main stepping algorithm)
+         call temp_corrector()
          call tim_check_cgce()  ! check if we can exit corrector iter. If true, tim_it=0.
       end do
 
@@ -100,10 +107,8 @@
       logical :: file_exist
 
       call mpi_precompute()
-      if(mpi_rnk==0) then
-         call system('touch PRECOMPUTING')
-         call system('echo $HOSTNAME > HOST')
-      end if
+      if(mpi_rnk==0) call system('touch PRECOMPUTING')
+      call system('echo $HOSTNAME > HOST')
 
       if(mpi_rnk==0)  print*, 'precomputing function requisites...'
       call par_precompute()
@@ -112,12 +117,15 @@
       call tra_precompute()
       call tim_precompute()
       call vel_precompute()
+      call temp_precompute()
+      call non_precompute()
       call  io_precompute()
    
       if(mpi_rnk==0)  print*, 'loading state...'
       tim_dt = 1d99
       call io_load_state()
       call vel_matrices()
+      call temp_matrices()
 
       if(mpi_rnk==0)  print*, 'initialising output files...'
       call io_openfiles()
@@ -133,7 +141,6 @@
       end if
       
       call clk_time(d_start)
-   
    end subroutine initialise
 
 !-------------------------------------------------------------------------
@@ -188,4 +195,3 @@
 !*************************************************************************
  END PROGRAM MAIN
 !*************************************************************************
-

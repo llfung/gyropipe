@@ -23,7 +23,7 @@
  contains
 
 !------------------------------------------------------------------------
-!  set the initial time and timestep, 
+!  set the initial time and timestep,
 !  possibly overwritten by loading a previously saved state
 !------------------------------------------------------------------------
    subroutine tim_precompute()
@@ -49,12 +49,12 @@
       type (mesh),      intent(out) :: A(0:i_pH1)
       double precision :: d(i_N)
       _loop_km_vars
-      
+
       _loop_km_begin
          d = -mes_D%r(:,-2)*i_Mp*m*i_Mp*m - d_alpha*k*d_alpha*k
          if(PM/=0) d = d - mes_D%r(:,-2) - 2d0*PM*i_Mp*m*mes_D%r(:,-2)
          A(nh)%M = c2 * mes_D%radLap%M
-         A(nh)%M(i_KL+1,1:) = A(nh)%M(i_KL+1,1:) + c2*d + c1 
+         A(nh)%M(i_KL+1,1:) = A(nh)%M(i_KL+1,1:) + c2*d + c1
       _loop_km_end
 
    end subroutine tim_mesh_init
@@ -71,12 +71,12 @@
       double precision :: d(i_N)
       integer :: info, n,j, S
       _loop_km_vars
-      
+
       _loop_km_begin
          d = -mes_D%r(:,-2)*i_Mp*m*i_Mp*m - d_alpha*k*d_alpha*k
          if(PM/=0) d = d - mes_D%r(:,-2) - 2d0*PM*i_Mp*m*mes_D%r(:,-2)
          A(nh)%M(i_KL+1:, :) = c2 * mes_D%radLap%M(:,1:)
-         A(nh)%M(2*i_KL+1,:) = A(nh)%M(2*i_KL+1,:) + c2*d + c1 
+         A(nh)%M(2*i_KL+1,:) = A(nh)%M(2*i_KL+1,:) + c2*d + c1
 
          ! assume symmetry on axis: S==-1 mode odd,  S==1 mode even
          S = modulo(m*i_Mp+abs(PM),2)
@@ -89,7 +89,7 @@
          end do
 					! boundary condition
          do j = i_N-i_KL, i_N
-            A(nh)%M(2*i_KL+1+i_N-j,j) = mes_D%dr1(i_KL-i_N+j+1,BC) 
+            A(nh)%M(2*i_KL+1+i_N-j,j) = mes_D%dr1(i_KL-i_N+j+1,BC)
          end do
          if(BC==1 .and. k==0 .and. m==0) cycle
 
@@ -113,9 +113,9 @@
       _loop_km_begin
          if(BC==1 .and. k==0 .and. m==0) then
             b%Re(:,nh) = 0d0
-            b%Im(:,nh) = 0d0         
+            b%Im(:,nh) = 0d0
             cycle
-         end if 
+         end if
          call dgbtrs('N', i_N, i_KL, i_KL, 1, A(nh)%M, 3*i_KL+1,  &
                      A(nh)%ipiv, b%Re(1,nh), i_N, info )
          if(info/=0) stop 'mes_lumesh_invert.1'
@@ -123,7 +123,7 @@
                      A(nh)%ipiv, b%Im(1,nh), i_N, info )
          if(info/=0) stop 'mes_lumesh_invert.2'
       _loop_km_end
-   
+
    end subroutine tim_lumesh_invert
 
 
@@ -163,7 +163,7 @@
          d%Re(:,nh) = re
          d%Im(:,nh) = im
       _loop_km_end
- 
+
    end subroutine tim_meshmult
 
 
@@ -193,7 +193,7 @@
       N%Re(:,0:nhm) = d1 * N%Re(:,0:nhm) + d2 * N_%Re(:,0:nhm)
       N%Im(:,0:nhm) = d1 * N%Im(:,0:nhm) + d2 * N_%Im(:,0:nhm)
    end subroutine tim_nlincorr
-      
+
 
 !-------------------------------------------------------------------------
 !  measure the magnutude of the correction: max diff
@@ -228,7 +228,7 @@
       if(tim_it==1) then                                            ! Just come out from 1st Corrector step
          tim_corr_dt = tim_dt * dsqrt( d_dterr/tim_dterr )
          lasterr = 1d99
-      end if         
+      end if
 
       if(tim_dt<1d-9 .and. tim_step>30) then
          if(mpi_rnk==0) print*, 'tim_check_cgce: dt --> 0 !!!?'
@@ -252,7 +252,7 @@
       else if(tim_dterr>d_dterr) then
          lasterr = tim_dterr
          tim_it = tim_it + 1
-      else          
+      else
          if(mpi_rnk==0 .and. modulo(tim_step,i_save_rate2)==0) then
             if(d_timestep> 0d0) print*,' step=',tim_step,' its=',tim_it
             if(d_timestep<=0d0) print*,' step=',tim_step,' dt=',real(tim_dt)
@@ -260,7 +260,7 @@
          tim_it = 0
       end if
       tim_dterr = 0d0
-      
+
    end subroutine tim_check_cgce
 
 
@@ -286,11 +286,39 @@
          if(dt>=tim_dt)  i = 99
          tim_dt = dt
       end if
-      
+
    end subroutine tim_new_tstep
+
+
+   !-------------------------------------------------------------------------
+   !  invert LNp, BC dr(p)=0
+   !-------------------------------------------------------------------------
+      subroutine tim_lumesh_invLNp( p)
+         type (coll), intent(inout) :: p
+         type (lumesh), allocatable, save :: LNp(:)
+         if(.not.allocated(LNp)) then
+            allocate(LNp(0:i_pH1))
+            call tim_lumesh_init( 0,1,0d0,1d0, LNp)
+         end if
+         call tim_lumesh_invert(1,LNp, p)
+      end subroutine tim_lumesh_invLNp
+
+   !------------------------------------------------------------------------
+   !  project onto space of div-free functions
+   !------------------------------------------------------------------------
+      subroutine tim_proj_div( r,t,z)
+         type (coll), intent(inout) :: r,t,z
+         type (coll) :: c1,c2,c3
+         call var_coll_div(r,t,z, c1)
+         call tim_zerobc(c1)
+         call tim_lumesh_invLNp(c1)
+         call var_coll_grad(c1, c1,c2,c3)
+         call var_coll_sub(c1, r)
+         call var_coll_sub(c2, t)
+         call var_coll_sub(c3, z)
+      end subroutine tim_proj_div
 
 
 !*************************************************************************
  end module timestep
 !*************************************************************************
-

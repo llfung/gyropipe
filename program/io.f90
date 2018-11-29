@@ -1,11 +1,12 @@
 !**************************************************************************
-!  IN/OUT 
+!  IN/OUT
 !
 !**************************************************************************
 #include "../parallel.h"
  module io
 !**************************************************************************
    use velocity
+   use temperature
    use netcdf
    implicit none
    save
@@ -16,7 +17,7 @@
    type (coll), private  :: c1,c2,c3
 
  contains
- 
+
 !--------------------------------------------------------------------------
 !  initialiser fn
 !--------------------------------------------------------------------------
@@ -29,8 +30,8 @@
       io_ID    = 21
       io_pt    = 0
       io_fr    = 50
-   end subroutine io_precompute 
- 
+   end subroutine io_precompute
+
 
 !--------------------------------------------------------------------------
 !  Open files written to every ... steps runtime
@@ -68,7 +69,8 @@
 
       if(modulo(tim_step,i_save_rate1)==0) then
          call io_save_state()
-         call io_save_spectrum()
+         call io_save_spectrum(1)
+         call io_save_spectrum(2)
          call io_save_meanprof()
          io_save1 = io_save1+1
       endif
@@ -92,77 +94,87 @@
    end subroutine io_write2files
 
 
-!--------------------------------------------------------------------------
-!  Load state - start from previous solution
-!--------------------------------------------------------------------------
-   subroutine io_load_state()
-      integer :: e, f, i, rd
-      integer :: n, N_
-      double precision :: d
-      integer, parameter :: lda = 2*i_KL+1
-      double precision :: A(lda,lda,i_N)
-      double precision, allocatable :: r(:)
-      logical :: interp
+   !--------------------------------------------------------------------------
+   !  Load state - start from previous solution
+   !--------------------------------------------------------------------------
+      subroutine io_load_state()
+         integer :: e, f, i, rd
+         integer :: n, N_
+         double precision :: d
+         integer, parameter :: lda = 2*i_KL+1
+         double precision :: A(lda,lda,i_N)
+         double precision, allocatable :: r(:)
+         logical :: interp
 
-      e=nf90_open(io_statefile, nf90_nowrite, f)      
-      if(e/=nf90_noerr) then
-         if(mpi_rnk==0) open(99, file='PRECOMPUTING')
-         if(mpi_rnk==0) close(99, status='delete')
-         if(mpi_rnk==0) print*, 'state file not found!: '//io_statefile
-#ifdef _MPI
+         e=nf90_open(io_statefile, nf90_nowrite, f)     !f is the returned netCDF id
+         if(e/=nf90_noerr) then
+            if(mpi_rnk==0) open(99, file='PRECOMPUTING')
+            if(mpi_rnk==0) close(99, status='delete')
+            if(mpi_rnk==0) print*, 'state file not found!: '//io_statefile
+   #ifdef _MPI
+            call mpi_barrier(mpi_comm_world, mpi_er)
+            call mpi_finalize(mpi_er)
+   #endif
+            stop 'io_load_state: file not found!'
+         end if
+
+         e=nf90_get_att(f,nf90_global,'t', d)  !function nf90_get_att(ncid, varid, name, values)
+         if(d_time<0d0) tim_t = d
+         if(mpi_rnk==0 .and. dabs(tim_t-d)>1d-8)  &
+            print*,' t    :',d,' --> ', tim_t
+         e=nf90_get_att(f,nf90_global,'Re', d)
+         if(mpi_rnk==0 .and. dabs(d_Re-d)>1d-8)  &
+            print*,' Re   :',d,' --> ', d_Re
+         e=nf90_get_att(f,nf90_global,'Gr', d)
+         if(e==nf90_noerr) then                 !if no errors occurred
+            if(mpi_rnk==0 .and. dabs(d_Gr-d)>1d-8)  &
+               print*,' Gr   :',d,' --> ', d_Gr
+         end if
+         e=nf90_get_att(f,nf90_global,'Pr', d)
+         if(e==nf90_noerr) then                 !if no errors occurred
+            if(mpi_rnk==0 .and. dabs(d_Pr-d)>1d-8)  &
+               print*,' Pr   :',d,' --> ', d_Pr
+         end if
+         e=nf90_get_att(f,nf90_global,'alpha', d)
+         if(mpi_rnk==0 .and. dabs(d_alpha-d)>1d-8)  &
+            print*,' alpha:',d,' --> ', d_alpha
+
+         e=nf90_inq_dimid(f,'r', rd) ! function nf90_inq_dimid(ncid, name, dimid), where dimid is the returned dimension ID.
+         e=nf90_inquire_dimension(f,rd, len=N_) !function nf90_inquire_dimension(ncid, dimid, name, len)
+
+         allocate( r(1-i_KL:N_))
+         e=nf90_inq_varid(f,'r', i)
+         e=nf90_get_var(f,i, r(1:N_))
+         r(1-i_KL:0) = -r(i_KL:1:-1)
+         interp = (N_/=i_N)
+         if(.not.interp) interp = (maxval(dabs(mes_D%r(:,1)-r(1:N_)))>1d-8)
+         if(interp) then
+            if(mpi_rnk==0) print*,' N    :', N_, ' --> ',i_N
+            call io_interp_wts(i_KL+N_,r,i_N,mes_D%r(1,1), A)
+         end if
+
+         e=nf90_inq_varid(f,'dt', i)
+         e=nf90_get_var(f,i, d)
+         if(d_timestep<0d0) tim_dt = d
+         if(d_timestep>0d0) tim_dt = d_timestep
+         e=nf90_inq_varid(f,'dtcor', i)
+         if(e==nf90_noerr)  e=nf90_get_var(f,i, tim_corr_dt)
+         e=nf90_inq_varid(f,'dtcfl', i)
+         if(e==nf90_noerr)  e=nf90_get_var(f,i, tim_cfl_dt)
+
+         call io_load_coll(f,'Ur',interp,N_,r,A,1, vel_ur)
+         call io_load_coll(f,'Ut',interp,N_,r,A,1, vel_ut)
+         call io_load_coll(f,'Uz',interp,N_,r,A,0, vel_uz)
+         call io_load_coll(f,'T', interp,N_,r,A,0, temp_tau)
+
+         deallocate(r)
+
+         e=nf90_close(f)
+   #ifdef _MPI
          call mpi_barrier(mpi_comm_world, mpi_er)
-         call mpi_finalize(mpi_er)
-#endif
-         stop 'io_load_state: file not found!'
-      end if
+   #endif
 
-      e=nf90_get_att(f,nf90_global,'t', d)
-      if(d_time<0d0) tim_t = d
-      if(mpi_rnk==0 .and. dabs(tim_t-d)>1d-8)  &
-         print*,' t    :',d,' --> ', tim_t
-
-      e=nf90_get_att(f,nf90_global,'Re', d)
-      if(mpi_rnk==0 .and. dabs(d_Re-d)>1d-8)  &
-         print*,' Re   :',d,' --> ', d_Re
-      e=nf90_get_att(f,nf90_global,'alpha', d)
-      if(mpi_rnk==0 .and. dabs(d_alpha-d)>1d-8)  &
-         print*,' alpha:',d,' --> ', d_alpha
-
-      e=nf90_inq_dimid(f,'r', rd)
-      e=nf90_inquire_dimension(f,rd, len=N_)
-
-      allocate( r(1-i_KL:N_))
-      e=nf90_inq_varid(f,'r', i)
-      e=nf90_get_var(f,i, r(1:N_))
-      r(1-i_KL:0) = -r(i_KL:1:-1)
-      interp = (N_/=i_N)
-      if(.not.interp) interp = (maxval(dabs(mes_D%r(:,1)-r(1:N_)))>1d-8)
-      if(interp) then
-         if(mpi_rnk==0) print*,' N    :', N_, ' --> ',i_N 
-         call io_interp_wts(i_KL+N_,r,i_N,mes_D%r(1,1), A)
-      end if
-
-      e=nf90_inq_varid(f,'dt', i)
-      e=nf90_get_var(f,i, d)
-      if(d_timestep<0d0) tim_dt = d
-      if(d_timestep>0d0) tim_dt = d_timestep
-      e=nf90_inq_varid(f,'dtcor', i)
-      if(e==nf90_noerr)  e=nf90_get_var(f,i, tim_corr_dt)
-      e=nf90_inq_varid(f,'dtcfl', i)
-      if(e==nf90_noerr)  e=nf90_get_var(f,i, tim_cfl_dt)
-
-      call io_load_coll(f,'Ur',interp,N_,r,A,1, vel_ur)
-      call io_load_coll(f,'Ut',interp,N_,r,A,1, vel_ut)
-      call io_load_coll(f,'Uz',interp,N_,r,A,0, vel_uz)      
-
-      deallocate(r)
-
-      e=nf90_close(f)
-#ifdef _MPI
-      call mpi_barrier(mpi_comm_world, mpi_er)
-#endif
-
-   end subroutine io_load_state
+      end subroutine io_load_state
 
 
 !--------------------------------------------------------------------------
@@ -179,19 +191,23 @@
       type (coll),      intent(out) :: a
       double precision :: fn(1-i_KL:N__)
       integer :: K1,M1, nh,nh_,nh__,n,k,m
-      integer :: K__, M__, Mp__      
+      integer :: K__, M__, Mp__
       integer :: e,i
-          
+
       e=nf90_inq_varid(f,nm, i)
-      if(e/=nf90_noerr)  print*, 'Field '//nm//' not found!'
-      if(e/=nf90_noerr)  stop 'io_load_coll'
+      if(e/=nf90_noerr) then
+      	if(mpi_rnk==0) print*, 'WARNING: Field '//nm//' not found!'
+	call var_coll_init(a)
+        return
+      end if
+!      if(e/=nf90_noerr)  stop 'io_load_coll'
       e=nf90_get_att(f,i, 'K',  K__)
       e=nf90_get_att(f,i, 'M',  M__)
       e=nf90_get_att(f,i,'Mp', Mp__)
       if(mpi_rnk==0) then
-         if(K__ /=i_K)  print*, nm, ' K :', K__, ' --> ',i_K 
-         if(M__ /=i_M)  print*, nm, ' M :', M__, ' --> ',i_M 
-         if(Mp__/=i_Mp) print*, nm, ' Mp:', Mp__,' --> ',i_Mp 
+         if(K__ /=i_K)  print*, nm, ' K :', K__, ' --> ',i_K
+         if(M__ /=i_M)  print*, nm, ' M :', M__, ' --> ',i_M
+         if(Mp__/=i_Mp) print*, nm, ' Mp:', Mp__,' --> ',i_Mp
       end if
       if(Mp__/=i_Mp .and. M__>2) stop 'io_load_coll: Mp /= i_Mp'
 
@@ -239,9 +255,9 @@
       integer, parameter :: lda = 2*i_KL+1
       integer,          intent(in)  :: ni, no
       double precision, intent(in)  :: xi(ni), xo(no)
-      double precision, intent(out) :: A(lda,lda,no) 
+      double precision, intent(out) :: A(lda,lda,no)
       integer :: n,nn,i,j,l,r
-      
+
       do n = 1, no
          j = 1
          do while(xi(j)<xo(n)-1d-8 .and. j<ni)
@@ -255,7 +271,7 @@
          end do
          do j = 2, nn
             do i = 1, nn
-               A(i,j,n) = A(i,j-1,n) * (xi(l+i-1)-xo(n)) / dble(j-1) 
+               A(i,j,n) = A(i,j-1,n) * (xi(l+i-1)-xo(n)) / dble(j-1)
             end do
          end do
          call mes_mat_invert(nn,A(1,1,n),lda)
@@ -271,10 +287,10 @@
       integer, parameter :: lda = 2*i_KL+1
       integer,          intent(in)  :: ni, no
       double precision, intent(in)  :: xi(ni), fi(ni), xo(no)
-      double precision, intent(in)  :: A(lda,lda,no) 
+      double precision, intent(in)  :: A(lda,lda,no)
       double precision, intent(out) :: fo(no)
       integer :: n,nn,i,j,l,r
-      
+
       do n = 1, no
          j = 1
          do while(xi(j)<xo(n)-1d-8 .and. j<ni)
@@ -296,7 +312,7 @@
       character(4) :: cnum
       integer :: e, f
       integer :: rd, Hd, ReImd, dims(3)
-      integer :: r,dt,dtcor,dtcfl, Ur,Ut,Uz
+      integer :: r,dt,dtcor,dtcfl, Ur,Ut,Uz, T
 
       write(cnum,'(I4.4)') io_save1
 
@@ -306,6 +322,8 @@
 
          e=nf90_put_att(f, nf90_global, 't', tim_t)
          e=nf90_put_att(f, nf90_global, 'Re', d_Re)
+         e=nf90_put_att(f, nf90_global, 'Gr', d_Gr)
+         e=nf90_put_att(f, nf90_global, 'Pr', d_Pr)
          e=nf90_put_att(f, nf90_global, 'alpha', d_alpha)
 
          e=nf90_def_dim(f, 'r', i_N, rd)
@@ -319,8 +337,9 @@
 
          dims = (/rd,Hd,ReImd/)
          call io_define_coll(f, 'Ur', dims, Ur)
-         call io_define_coll(f, 'Ut', dims, Ut)         
-         call io_define_coll(f, 'Uz', dims, Uz)         
+         call io_define_coll(f, 'Ut', dims, Ut)
+         call io_define_coll(f, 'Uz', dims, Uz)
+         call io_define_coll(f, 'T', dims, T)
 
          e=nf90_enddef(f)
 
@@ -333,12 +352,13 @@
       call io_save_coll(f,Ur, vel_ur)
       call io_save_coll(f,Ut, vel_ut)
       call io_save_coll(f,Uz, vel_uz)
+      call io_save_coll(f,T, temp_tau)
 
       if(mpi_rnk==0)  &
          e=nf90_close(f)
 
    end subroutine io_save_state
- 
+
 
 !--------------------------------------------------------------------------
 !  Save coll variable
@@ -349,7 +369,7 @@
       integer, intent(out) :: id
       integer :: e
       e=nf90_def_var(f, nm, nf90_double, dims, id)
-      e=nf90_put_att(f, id,  'K', i_K)      
+      e=nf90_put_att(f, id,  'K', i_K)
       e=nf90_put_att(f, id,  'M', i_M)
       e=nf90_put_att(f, id, 'Mp', i_Mp)
    end subroutine io_define_coll
@@ -359,7 +379,7 @@
       integer,     intent(in) :: f, id
       type (coll), intent(in) :: a
       integer :: e
-      
+
 #ifndef _MPI
       e=nf90_put_var(f,id,a%Re(1:i_N,0:i_H1), start=(/1,1,1/))
       e=nf90_put_var(f,id,a%Im(1:i_N,0:i_H1), start=(/1,1,2/))
@@ -369,7 +389,7 @@
 
       if(mpi_rnk==0) then
          e=nf90_put_var(f,id,a%Re(1:i_N,0:var_H%pH1), start=(/1,1,1/))
-         e=nf90_put_var(f,id,a%Im(1:i_N,0:var_H%pH1), start=(/1,1,2/))         
+         e=nf90_put_var(f,id,a%Im(1:i_N,0:var_H%pH1), start=(/1,1,2/))
          do r = 1, mpi_sze-1
             pH0 = var_H%pH0_(r)
             pH1 = var_H%pH1_(r)
@@ -388,40 +408,42 @@
          call mpi_send( a%Im, i_N*(var_H%pH1+1), mpi_double_precision,  &
             0, mpi_tg, mpi_comm_world, mpi_er)
       end if
-#endif      
+#endif
    end subroutine io_save_coll
 
 
 !--------------------------------------------------------------------------
 !  save spectrum
 !--------------------------------------------------------------------------
-   subroutine io_save_spectrum()
-      double precision :: n_(1:i_N), k_(0:i_K1), m_(0:i_M1)
-      double precision :: n__(1:i_N), k__(0:i_K1), m__(0:i_M1)
-      double precision,save :: TM(i_N,i_N), x(i_N)
-      double precision :: d(i_N), dRe(i_N), dIm(i_N)
-      logical, save :: set=.false.
-      character(4) :: cnum
-      integer :: i, n,kp
-      _loop_km_vars
-   10 format(i4,1e20.12)
-      
-      if(.not.set) then
-         set =.true.
-         do n = 0, i_N-1
-            x(n+1) = 0.5d0 * ( 1d0 + dcos(d_PI*(i_N-n)/dble(i_N)) )
-         end do
-         do n = 1, i_N
-            call cheby(n-1, 0, x, i_N, TM(1,n))
-         end do
-         call mes_mat_invert(i_N,TM,i_N)
-         TM = transpose(TM)
-      end if
+subroutine io_save_spectrum(FN)
+   integer, intent(in) :: FN
+   double precision :: n_(1:i_N), k_(0:i_K1), m_(0:i_M1)
+   double precision :: n__(1:i_N), k__(0:i_K1), m__(0:i_M1)
+   double precision,save :: TM(i_N,i_N), x(i_N)
+   double precision :: d(i_N), dRe(i_N), dIm(i_N)
+   logical, save :: set=.false.
+   character(4) :: cnum
+   integer :: i, n,kp
+   _loop_km_vars
+10 format(i4,1e20.12)
 
-      n_ = 0d0
-      k_ = 0d0
-      m_ = 0d0
-      _loop_km_begin
+   if(.not.set) then
+      set =.true.
+      do n = 0, i_N-1
+         x(n+1) = 0.5d0 * ( 1d0 + dcos(d_PI*(i_N-n)/dble(i_N)) )
+      end do
+      do n = 1, i_N
+         call cheby(n-1, 0, x, i_N, TM(1,n))
+      end do
+      call mes_mat_invert(i_N,TM,i_N)
+      TM = transpose(TM)
+   end if
+
+   n_ = 0d0
+   k_ = 0d0
+   m_ = 0d0
+   _loop_km_begin
+      if(FN==1) then
          dRe = matmul(vel_ur%Re(:,nh), TM)
          dIm = matmul(vel_ur%Im(:,nh), TM)
          d = dRe*dRe+dIm*dIm
@@ -431,47 +453,53 @@
          dRe = matmul(vel_uz%Re(:,nh), TM)
          dIm = matmul(vel_uz%Im(:,nh), TM)
          d = max(d, dRe*dRe+dIm*dIm)
+      else if(FN==2) then
+         dRe = matmul(temp_tau%Re(:,nh), TM)
+         dIm = matmul(temp_tau%Im(:,nh), TM)
+         d = dRe*dRe+dIm*dIm
+      end if
          d = dsqrt(d)
          kp = abs(k)
-         do n = 1, i_N
-             n_(n)  = max(d(n), n_(n))
-             k_(kp) = max(d(n), k_(kp))
-             m_(m)  = max(d(n), m_(m))            
-         end do
-      _loop_km_end
+      do n = 1, i_N
+          n_(n)  = max(d(n), n_(n))
+          k_(kp) = max(d(n), k_(kp))
+          m_(m)  = max(d(n), m_(m))
+      end do
+   _loop_km_end
 #ifdef _MPI
-      call mpi_allreduce(n_, n__, i_N, mpi_double_precision,  &
-         mpi_max, mpi_comm_world, mpi_er)
-      n_ = n__
-      call mpi_allreduce(k_, k__, i_K, mpi_double_precision,  &
-         mpi_max, mpi_comm_world, mpi_er)
-      k_ = k__
-      call mpi_allreduce(m_, m__, i_M, mpi_double_precision,  &
-         mpi_max, mpi_comm_world, mpi_er)
-      m_ = m__
+   call mpi_allreduce(n_, n__, i_N, mpi_double_precision,  &
+      mpi_max, mpi_comm_world, mpi_er)
+   n_ = n__
+   call mpi_allreduce(k_, k__, i_K, mpi_double_precision,  &
+      mpi_max, mpi_comm_world, mpi_er)
+   k_ = k__
+   call mpi_allreduce(m_, m__, i_M, mpi_double_precision,  &
+      mpi_max, mpi_comm_world, mpi_er)
+   m_ = m__
 #endif
 
-      if(mpi_rnk/=0) return
-      write(cnum,'(I4.4)') io_save1
-      open(11, status='unknown', file='vel_spec'//cnum//'.dat')
-      write(11,*) '# t = ', tim_t
-      write(11,*) '# n'
-      do i = 1, i_N
-         write(11,10) i, n_(i)      
-      end do
-      write(11,*)
-      write(11,*) '# k'
-      do i = 0, i_K1
-         write(11,10) i, k_(i)      
-      end do
-      write(11,*)
-      write(11,*) '# m'
-      do i = 0, i_M1
-         write(11,10) i*i_Mp, m_(i)      
-      end do
-      close(11)
+   if(mpi_rnk/=0) return
+   write(cnum,'(I4.4)') io_save1
+   if(FN==1) open(11, status='unknown', file='vel_spec'//cnum//'.dat')
+   if(FN==2) open(11, status='unknown', file='temp_spec'//cnum//'.dat')
+   write(11,*) '# t = ', tim_t
+   write(11,*) '# n'
+   do i = 1, i_N
+      write(11,10) i, n_(i)
+   end do
+   write(11,*)
+   write(11,*) '# k'
+   do i = 0, i_K1
+      write(11,10) i, k_(i)
+   end do
+   write(11,*)
+   write(11,*) '# m'
+   do i = 0, i_M1
+      write(11,10) i*i_Mp, m_(i)
+   end do
+   close(11)
 
-   end subroutine io_save_spectrum
+end subroutine io_save_spectrum
 
 
 !--------------------------------------------------------------------------
@@ -487,19 +515,28 @@
       write(11,*) '# t = ', tim_t
       write(11,*) '# r  uz(r)'
       do n = 1, i_N
-         write(11,'(2e20.12)')  mes_D%r(n,1),  &
-            vel_uz%Re(n,0) + 1d0-mes_D%r(n,2)      
+        write(11,'(3e20.12)')  mes_D%r(n,1),  &
+           vel_uz%Re(n,0) + 1d0-mes_D%r(n,2), 1d0-mes_D%r(n,2) + 1d0/32d0 * d_Gr/d_Re * ( 1d0-mes_D%r(n,2) ) * ( 3d0-mes_D%r(n,2) )
       end do
       close(11)
 
+      open(12, status='unknown', file='temp_prof'//cnum//'.dat')
+        write(12,*) '# t = ', tim_t
+        write(12,*) '# r  <T>_{z,th}(r)'
+        do n = 1, i_N
+           write(12,'(2e20.12)')  mes_D%r(n,1),  &
+              temp_tau%Re(n,0) + temp_T0(n)
+      end do
+      close(12)
+
    end subroutine io_save_meanprof
 
- 
+
 !--------------------------------------------------------------------------
 !  write to energy file
 !--------------------------------------------------------------------------
    subroutine io_write_energy()
-      double precision :: E,Ek0,Em0,E_, Ek(0:i_K1), Em(0:i_M1)
+      double precision :: E,Ek0,Em0,E_, Ek(0:i_K1), Em(0:i_M1), Etau
 
       call var_coll_norm(vel_ur, E,Ek,Em)
       Ek0 = Ek(0)
@@ -512,10 +549,12 @@
       E   = E + E_
       Ek0 = Ek0 + Ek(0)
       Em0 = Em0 + Em(0)
-      
+
+       call var_coll_norm(temp_tau, Etau,Ek,Em)
+
       if(mpi_rnk/=0) return
-      write(io_KE,'(4e20.12)')  tim_t, E, Ek0, Em0
-      
+      write(io_KE,'(5e20.12)')  tim_t, E, Ek0, Em0, Etau
+
       if(E-Ek0>d_minE3d .or. tim_t<20d0) return
       print*, 'io_write_energy: Relaminarised!'
       open(99,file='RUNNING')
@@ -537,20 +576,20 @@
       call var_coll_norm(vel_ut, E_,Ek,Em)
       call var_coll_norm(c3,     E__,Ek,Em)
       Enrg = E + E_ + E__
-      
+
       call var_coll_curl(vel_ur,vel_ut,c3, c1,c2,c3)
       call var_coll_norm(c1, E,Ek,Em)
       call var_coll_norm(c2, E_,Ek,Em)
       call var_coll_norm(c3, E__,Ek,Em)
       Diss = E + E_ + E__
-      
+
       Lz = 2d0*d_PI/d_alpha
       Enrg = Enrg / (d_PI**2/(3d0*d_alpha))
       Diss = Diss * 2d0/d_Re
       Diss = Diss / abs(vel_Up(i_N)*d_PI*Lz/d_Re)
                                                    !   I/I_lam = 1+beta
       Inp = 1d0 + vel_Pr0
-      
+
       if(mpi_rnk/=0) return
       write(io_ID,'(4e20.12)')  tim_t, Enrg, Inp, Diss
 
@@ -565,16 +604,16 @@
       double precision :: d(9), d_
       if(_Ns/=1) stop 'io_write_pointvel: put _Ns=1'
 
-      d = 1d0      
+      d = 1d0
       do n = 1, i_N
          d_ = dabs(mes_D%r(n,1)-0.6d0) !0.6667d0)
-         if(d_<d(1)) r(1) = n 
+         if(d_<d(1)) r(1) = n
          if(d_<d(1)) d(1) = d_
          d_ = dabs(mes_D%r(n,1)-0.6d0) !0.7550d0)
-         if(d_<d(2)) r(2) = n 
+         if(d_<d(2)) r(2) = n
          if(d_<d(2)) d(2) = d_
          d_ = dabs(mes_D%r(n,1)-0.6d0) !0.9217d0)
-         if(d_<d(3)) r(3) = n 
+         if(d_<d(3)) r(3) = n
          if(d_<d(3)) d(3) = d_
       end do
       do n = 0, mpi_sze-1
@@ -590,7 +629,7 @@
          d(1) = vel_r%Re(0,0,r(1)-mes_D%pNi+1)
          d(2) = vel_t%Re(0,0,r(1)-mes_D%pNi+1)
          d(3) = vel_z%Re(0,0,r(1)-mes_D%pNi+1)
-      end if      
+      end if
       if(rt(2)==mpi_rnk) then
          d(4) = vel_r%Re(i_pZ/3,i_Th/3,r(2)-mes_D%pNi+1)
          d(5) = vel_t%Re(i_pZ/3,i_Th/3,r(2)-mes_D%pNi+1)
@@ -620,7 +659,7 @@
 
 !--------------------------------------------------------------------------
 !  write:  1, time;  2,  bulk vel / excess pressure fraction if fixed flux;
-!          3, mean uz at r=0;  4, friction velocity. 
+!          3, mean uz at r=0;  4, friction velocity.
 !--------------------------------------------------------------------------
    subroutine io_write_friction()
       double precision :: Ub, Uc, Ufr
@@ -630,10 +669,10 @@
       Uc = 1d0 + dot_product(vel_uz%Re(1:1+i_KL,0),mes_D%dr0(:,0))
       Ufr = dot_product(vel_uz%Re(i_N-i_KL:i_N,0),mes_D%dr1(:,1))
       Ufr = dsqrt(dabs((Ufr-2d0)/d_Re))
-      
+
       if(mpi_rnk/=0) return
       write(io_fr,'(4e20.12)') tim_t, Ub, Uc, Ufr
-   
+
    end subroutine io_write_friction
 
 
@@ -658,4 +697,3 @@
 !**************************************************************************
  end module io
 !**************************************************************************
-
