@@ -21,28 +21,30 @@
 
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
    double precision            :: d_Re          = 2500d0
+   double precision            :: d_Pr          = 7d0
+   double precision            :: d_Gr          = -400000d0
    double precision            :: d_alpha       = 1.25d0
    logical,          parameter :: b_const_flux  = .true.
    logical,          parameter :: b_mirrorsym   = .false.
    logical,          parameter :: b_shiftrefl   = .false.
    logical,          parameter :: b_shiftrott   = .false.
    double precision, parameter :: d_minE3d      = 1d-5
-   
+
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
    integer,          parameter :: i_save_rate1  = 2000!100
-   integer,          parameter :: i_save_rate2  = 10  
-   integer,          parameter :: i_maxtstep    = -1 
+   integer,          parameter :: i_save_rate2  = 10
+   integer,          parameter :: i_maxtstep    = -1
    double precision, parameter :: d_maxt        = -1d0
    double precision, parameter :: d_cpuhours    = 1d99 !90d0
    double precision, parameter :: d_time        = 0d0 !-1d0
-   double precision, parameter :: d_timestep    = -1d0 !0.01d0
-   double precision, parameter :: d_maxdt       = 1d99
+   double precision, parameter :: d_timestep    = 0.01d0 !-1d0
+   double precision, parameter :: d_maxdt       = 0.02d0 !1d99
    double precision, parameter :: d_dterr       = 1d-5 !1d99
    double precision, parameter :: d_courant     = 0.5d0
    double precision, parameter :: d_implicit    = 0.51d0
 
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
-   integer,          parameter :: i_KL  = 4   
+   integer,          parameter :: i_KL  = 4
    integer,          parameter :: i_K1  = i_K-1
    integer,          parameter :: i_M1  = i_M-1
    integer,          parameter :: i_Z   = 3*i_K
@@ -62,11 +64,8 @@
       if(modulo(i_Z,_Ns)/=0) stop '_Ns must divide i_Z'
       if(modulo(i_M,_Ns)/=0) stop '_Ns must divide i_M'
    end subroutine par_precompute
- 
+
 
 !***************************************************************************
  end module parameters
 !***************************************************************************
-
-
-
