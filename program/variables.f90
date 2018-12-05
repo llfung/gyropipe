@@ -42,7 +42,7 @@
    type phys
       double precision     :: Re(0:i_pZ-1, 0:i_Th-1, i_pN)
    end type phys
-   
+
 
    type (harm)               :: var_H
    type (coll),      private :: c1,c2,c3
@@ -75,7 +75,7 @@
       end do
       var_H%pH0 = var_H%pH0_(mpi_rnk)
       var_H%pH1 = var_H%pH1_(mpi_rnk)
-      
+
       do n = 0, i_M1
          ad_m1r1(:,n) = mes_D%r(:,-1) * i_Mp*n
          ad_m2r2(:,n) = mes_D%r(:,-2) * i_Mp*n * i_Mp*n
@@ -209,7 +209,7 @@
       nc = 1
       if(present(c2)) nc = 2
       if(present(c3)) nc = 3
-  
+
       rko = (mpi_rnk/_Nr)*_Nr
       nho = var_H%pH0_(rko)
 
@@ -244,7 +244,7 @@
             mpi_double_precision, dst, mpi_tg, mpi_comm_world,  &
             mpi_rq(mpi_sze+stp), mpi_er)
       end do
-      
+
       do stp = 0, _Nr-1
          src  = modulo(mpi_sze-stp+mpi_rnk, _Nr) + rko
          call mpi_wait( mpi_rq(stp), mpi_st, mpi_er)
@@ -273,7 +273,7 @@
 
    end subroutine var_coll2spec
 #endif
-   
+
 !-------------------------------------------------------------------------
 !  convert spectral -> collocated
 !-------------------------------------------------------------------------
@@ -341,7 +341,7 @@
             mpi_double_precision, dst, mpi_tg, mpi_comm_world,  &
             mpi_rq(mpi_sze+stp), mpi_er)
       end do
-      
+
       do stp = 0, _Nr-1
          src  = modulo(mpi_sze-stp+mpi_rnk, _Nr) + rko
          call mpi_wait( mpi_rq(stp), mpi_st, mpi_er)
@@ -422,7 +422,7 @@
       call var_coll_copy(r,c1)
       call var_coll_copy(t,c2)
       call var_coll_copy(z,c3)
- 
+
       _loop_km_begin
          or%Re(:,nh) = -c3%Im(:,nh)*ad_m1r1(:,m) + c2%Im(:,nh)*ad_k1a1(k)
          or%Im(:,nh) =  c3%Re(:,nh)*ad_m1r1(:,m) - c2%Re(:,nh)*ad_k1a1(k)
@@ -486,7 +486,7 @@
 	  + t%Re(:,nh)*ad_m1r1(:,m) + z%Re(:,nh)*ad_k1a1(k)
       _loop_km_end
       call var_coll_copy(c2, dv)
-      
+
    end subroutine var_coll_div
 
 
@@ -501,16 +501,16 @@
       double precision, save :: cosk(-i_K1:i_K1), cosm(0:i_M1), dt_=1d8
       double precision :: dRe(i_N)
       _loop_km_vars
-      
+
       call var_coll_copy(a, b)
 
       if(dz/=0d0) then
          if(dz/=dz_) then
-            dz_ = dz      
+            dz_ = dz
             do k = -i_K1, i_K1
                sink(k) = dsin(dz*k*d_alpha)
                cosk(k) = dcos(dz*k*d_alpha)
-            end do 
+            end do
          end if
          _loop_km_begin
             dRe = b%Re(:,nh)
@@ -518,14 +518,14 @@
             b%Im(:,nh) = b%Im(:,nh)*cosk(k) - dRe*sink(k)
          _loop_km_end
       end if
-      
+
       if(dt/=0d0) then
          if(dt/=dt_) then
-            dt_ = dt      
+            dt_ = dt
             do m = 0, i_M1
                sinm(m) = dsin(dt*m*i_Mp)
                cosm(m) = dcos(dt*m*i_Mp)
-            end do 
+            end do
          end if
          _loop_km_begin
             dRe = b%Re(:,nh)
@@ -533,7 +533,7 @@
             b%Im(:,nh) = b%Im(:,nh)*cosm(m) - dRe*sinm(m)
          _loop_km_end
       end if
-   
+
    end subroutine var_coll_shift
 
 
@@ -544,7 +544,7 @@
 !   i==3:  shift & rotate (Omega)
 !   NB: 'highly symm' == sh&ref + sh&rot
 !------------------------------------------------------------------------
- subroutine var_imposesym(i, r,t,z)   
+ subroutine var_imposesym(i, r,t,z)
    integer,    intent(in)    :: i
    type(coll), intent(inout) :: r,t,z
    double precision :: a, b, bsend(i_N,6)
@@ -555,7 +555,7 @@
       do m = 0, i_M1
          do k = -i_K1, i_K1
             if(k<0 .and. m==0) cycle
-            
+
             call var_harmonic( k,m, nh ,p1)
             call var_harmonic(-k,m, nh_,p2)
             if(m==0) nh_=nh
@@ -583,7 +583,7 @@
                   call mpi_recv( bsend, i_N*6, mpi_double_precision,  &
                      p1, mpi_tg, mpi_comm_world, mpi_st, mpi_er)
             end if
-#endif         
+#endif
             if(mpi_rnk==p2) then
                c1%Re(:,nh_) = bsend(:,1)
                c1%Im(:,nh_) = bsend(:,2)
@@ -604,7 +604,7 @@
          z%Im(:,nh) = ( z%Im(:,nh) + c3%Im(:,nh) ) / 2d0
       _loop_km_end
    end if
-   
+
    if(i==3) then
       _loop_km_begin
          if(modulo(k+m,2)==0) cycle
@@ -616,7 +616,7 @@
          z%Im(:,nh) = 0d0
       _loop_km_end
    end if
-   
+
    if(mpi_rnk==0) then
       r%Re(:,0) = 0d0
       r%Im(:,0) = 0d0
@@ -624,7 +624,7 @@
       z%Im(:,0) = 0d0
    end if
 
- end subroutine var_imposesym 
+ end subroutine var_imposesym
 
 
 !------------------------------------------------------------------------
@@ -636,7 +636,7 @@
       double precision, save :: dt,dz, r_(i_N)
       logical, save :: set = .false.
 
-      if(.not.set) then 
+      if(.not.set) then
          r_ = mes_D%r(:,1)
          dt = 2d0*d_PI/dble(i_Mp*i_Th)
          dz = 2d0*d_PI/(d_alpha*i_Z)
@@ -653,7 +653,7 @@
       end do
       ix(2) = modulo(nint(x(2)/dt),i_Th)
       ix(3) = modulo(nint(x(3)/dz),i_Z)
-      
+
    end subroutine var_nearestpt
 
 
@@ -670,7 +670,7 @@
       double precision :: rd,td,zd, c00,c10,c01,c11, c0,c1
       integer :: ir0,ir1,it0,it1,iz0,iz1
 
-      if(.not.set) then 
+      if(.not.set) then
          r_ = mes_D%r(:,1)
          dt = 2d0*d_PI/dble(i_Mp*i_Th)
          dz = 2d0*d_PI/(d_alpha*i_Z)
@@ -716,8 +716,8 @@
       c11 = p%Re(iz1,it1,ir0)*(1d0-rd) + p%Re(iz1,it1,ir1)*rd
       c0 = c00*(1d0-td) + c10*td
       c1 = c01*(1d0-td) + c11*td
-      c = c0*(1d0-zd) + c1*zd      
-      
+      c = c0*(1d0-zd) + c1*zd
+
  end subroutine var_interpnearpt
 
 
@@ -732,7 +732,7 @@
 #endif
       double precision :: w, b, f(i_N)
       _loop_km_vars
-      
+
       Ek = 0d0
       Em = 0d0
       w  = 4d0 * d_PI*d_PI / d_alpha
@@ -741,7 +741,7 @@
          f =  w * ( a%Re(:,nh)*a%Re(:,nh)  &
                   + a%Im(:,nh)*a%Im(:,nh) )
          b = dot_product(f,mes_D%intrdr )
-         if(k==0 .and. m==0) b = 0.5d0*b 
+         if(k==0 .and. m==0) b = 0.5d0*b
          Em(m)      = Em(m)      + b
          Ek(abs(k)) = Ek(abs(k)) + b
       _loop_km_end
@@ -754,9 +754,9 @@
          mpi_sum, mpi_comm_world, mpi_er)
       Em = Em_
 #endif
-      
+
       E = sum(Em)
-   
+
    end subroutine var_coll_norm
 
 !*************************************************************************
