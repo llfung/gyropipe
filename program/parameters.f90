@@ -23,6 +23,7 @@
    double precision            :: d_Re          = 2500d0
    double precision            :: d_Pr          = 7d0
    double precision            :: d_Gr          = -400000d0
+   double precision            :: d_beta        = 1d0
    double precision            :: d_alpha       = 1.25d0
    logical,          parameter :: b_const_flux  = .true.
    logical,          parameter :: b_mirrorsym   = .false.
@@ -31,9 +32,9 @@
    double precision, parameter :: d_minE3d      = 1d-5
 
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
-   integer,          parameter :: i_save_rate1  = 2000!100
-   integer,          parameter :: i_save_rate2  = 10
-   integer,          parameter :: i_maxtstep    = -1
+   integer,          parameter :: i_save_rate1  = 10000!100
+   integer,          parameter :: i_save_rate2  = 1000
+   integer,          parameter :: i_maxtstep    = 5000
    double precision, parameter :: d_maxt        = -1d0
    double precision, parameter :: d_cpuhours    = 1d99 !90d0
    double precision, parameter :: d_time        = 0d0 !-1d0

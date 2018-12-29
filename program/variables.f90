@@ -176,6 +176,14 @@
       a%Im(:,0:var_H%pH1) = - ac%Im(:,0:var_H%pH1)
    end subroutine var_coll_neg
 
+!------------------------------------------------------------------------
+!     out := - in
+!------------------------------------------------------------------------
+      subroutine var_coll_neg_loc(a)
+         type (coll), intent(inout) :: a
+         a%Re(:,0:var_H%pH1) = - a%Re(:,0:var_H%pH1)
+         a%Im(:,0:var_H%pH1) = - a%Im(:,0:var_H%pH1)
+      end subroutine var_coll_neg_loc
 
 !-------------------------------------------------------------------------
 !  convert collocated -> spectral
@@ -444,6 +452,22 @@
 
    end subroutine var_coll_curl
 
+!------------------------------------------------------------------------
+!  take the curl of a vector
+!------------------------------------------------------------------------
+    subroutine var_coll_lap(r,t,z, or,ot,oz)
+       type (coll), intent(in)  :: r,t,z
+       type (coll), intent(out) :: or,ot,oz
+       type (coll) :: tempr,tempt,tempz
+
+         call var_coll_curl(r,t,z, or,ot,oz)
+         call var_coll_neg(or,tempr)
+         call var_coll_neg(ot,tempt)
+         call var_coll_neg(oz,tempz)
+         call var_coll_curl(tempr,tempt,tempz, or,ot,oz)
+
+    end subroutine var_coll_lap
+
 
 !------------------------------------------------------------------------
 !  take the gradient of a scalar
@@ -667,7 +691,7 @@
       double precision, intent(out) :: c
       double precision, save :: dt,dz, r_(i_N)
       logical, save :: set = .false.
-      double precision :: rd,td,zd, c00,c10,c01,c11, c0,c1
+      double precision :: rd,td,zd, c00,c10,c01,c11, c0,cc1
       integer :: ir0,ir1,it0,it1,iz0,iz1
 
       if(.not.set) then
@@ -715,8 +739,8 @@
       c01 = p%Re(iz1,it0,ir0)*(1d0-rd) + p%Re(iz1,it0,ir1)*rd
       c11 = p%Re(iz1,it1,ir0)*(1d0-rd) + p%Re(iz1,it1,ir1)*rd
       c0 = c00*(1d0-td) + c10*td
-      c1 = c01*(1d0-td) + c11*td
-      c = c0*(1d0-zd) + c1*zd
+      cc1 = c01*(1d0-td) + c11*td
+      c = c0*(1d0-zd) + cc1*zd
 
  end subroutine var_interpnearpt
 

@@ -22,7 +22,7 @@
       call temp_transform()
       call non_velocity()
       call non_temperature()
-      call var_null(2)
+      call var_null(2)          ! where you put util()
       if(d_timestep<0d0) then
          call vel_maxtstep()    ! Automated timestep size calculation->tim_cfl_dt
          call tim_new_tstep()   ! Other conditions that limits the timestep size
@@ -153,6 +153,7 @@
          print*, 'cleanup...'
          call clk_time(d_stop)
          print*, ' sec/step  = ', (d_stop-d_start)/real(tim_step)
+         print*, ' CPU time raw =', (d_stop-d_start)
 #ifdef _CPUTIME
          print*, ' CPU time  = ', int((d_stop-d_start)/6d1), ' mins.'
 #else

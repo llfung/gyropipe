@@ -17,16 +17,22 @@
    type (phys) :: vel_curlr
    type (phys) :: vel_curlt
    type (phys) :: vel_curlz
+   type (phys) :: vel_lapr
+   type (phys) :: vel_lapt
+   type (phys) :: vel_lapz
+   type (phys) :: vel_Up_phy
    type (coll) :: vel_ur
    type (coll) :: vel_ut
    type (coll) :: vel_uz
    type (coll) :: vel_Nr
    type (coll) :: vel_Nt
    type (coll) :: vel_Nz
-   double precision :: vel_nu
+   double precision :: vel_nu ! 1d0 by default. Only changed if utils used to change 'reference viscosity'
    double precision :: vel_Pr0
    double precision :: vel_U(i_N)
    double precision :: vel_Up(i_N)
+   double precision :: vel_Upp
+
 
    type (lumesh), private :: LDp(0:i_pH1), LDm(0:i_pH1)
    type (lumesh), private :: LDz(0:i_pH1), LNp(0:i_pH1)
@@ -34,7 +40,7 @@
    type (mesh),   private :: Ltz(0:i_pH1)
    type (coll),   private :: Nr_,Nt_,Nz_,ur_,ut_,uz_
 
-   type (coll), private :: c1,c2,c3
+   type (coll), private :: c1,c2,c3, dd1,dd2,dd3
 
  contains
 
@@ -42,6 +48,8 @@
 !  initialise velocity/pressure field
 !------------------------------------------------------------------------
    subroutine vel_precompute()
+      INTEGER :: i,j
+      type(coll) :: vel_Up_col
       call var_coll_init(vel_ur)
       call var_coll_init(vel_ut)
       call var_coll_init(vel_uz)
@@ -49,6 +57,14 @@
       vel_Pr0 = 0d0
       vel_U   = 1d0 - mes_D%r(:,2)
       vel_Up  = - 2d0*mes_D%r(:,1)
+      vel_Upp = - 4d0
+
+      do i=0,i_pH1
+        vel_Up_col%Re(:,i)=- 2d0*mes_D%r(:,1)
+        vel_Up_col%Im(:,i)=0d0
+      end do
+      call tra_coll2phys(vel_Up_col, vel_Up_phy)
+      
    end subroutine vel_precompute
 
 
@@ -296,6 +312,12 @@
 
       call var_coll_curl(vel_ur,vel_ut,vel_uz, c1,c2,c3)
       call tra_coll2phys(c1,vel_curlr, c2,vel_curlt, c3,vel_curlz)
+
+      call var_coll_curl(c1,c2,c3, dd1,dd2,dd3)
+      call var_coll_neg_loc(dd1)
+      call var_coll_neg_loc(dd2)
+      call var_coll_neg_loc(dd3)
+      call tra_coll2phys(dd1,vel_lapr, dd2,vel_lapt, dd3,vel_lapz)
 
    end subroutine vel_transform
 

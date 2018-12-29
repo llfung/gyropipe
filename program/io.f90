@@ -525,7 +525,7 @@ end subroutine io_save_spectrum
         write(12,*) '# r  <T>_{z,th}(r)'
         do n = 1, i_N
            write(12,'(2e20.12)')  mes_D%r(n,1),  &
-              temp_tau%Re(n,0) + temp_T0(n)
+              temp_tau%Re(n,0) !+ temp_T0(n)
       end do
       close(12)
 

@@ -192,9 +192,10 @@
       mpi_max, mpi_comm_world, mpi_er)
    nu_max = d1
 #endif
-   if(0.95d0*d1<vel_nu .and. vel_nu<1.05d0*d1)  return
-   vel_nu = d1
+   if(0.95d0*d1<vel_nu .and. vel_nu<1.05d0*d1)  return ! If within bound, escape and no update
+   vel_nu = d1                                         ! Update otherwise.
    call vel_matrices()
+   call temp_matrices()
 */
  end subroutine get_nu
 

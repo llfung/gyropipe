@@ -18,7 +18,7 @@
    double precision :: tim_cfl_dt
    integer          :: tim_cfl_dir
    logical          :: tim_new_dt   ! If we have updated the timestep from last time
-   integer          :: tim_pcn
+   integer          :: tim_pcn      ! Equals 1 if one wants a single corrector step (for utils: Newton solver, nonnewtonina.f90, etc.)
 
  contains
 
@@ -88,9 +88,20 @@
             end do
          end do
 					! boundary condition
-         do j = i_N-i_KL, i_N
-            A(nh)%M(2*i_KL+1+i_N-j,j) = mes_D%dr1(i_KL-i_N+j+1,BC)
-         end do
+          if (BC<=i_KL) then
+             do j = i_N-i_KL, i_N
+                A(nh)%M(2*i_KL+1+i_N-j,j) = mes_D%dr1(i_KL-i_N+j+1,BC)
+             end do
+          else
+            do j = i_N-i_KL, i_N
+               A(nh)%M(2*i_KL+1+i_N-j,j) = mes_D%dr1(i_KL-i_N+j+1,0)
+            end do
+            ! For B.C. at r=R to be equal to RHS
+            do j =0,(i_KL-1)
+              A(nh)%M(1+j,i_N-i_KL+j)=0d0
+            end do
+              A(nh)%M(1+j,i_N-i_KL+j)=1d0
+          end if
          if(BC==1 .and. k==0 .and. m==0) cycle
 
          call dgbtrf(i_N,i_N,i_KL,i_KL,A(nh)%M,3*i_KL+1,A(nh)%ipiv,info)

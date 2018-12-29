@@ -68,7 +68,7 @@
       p2%Re = vel_z%Re*vel_curlr%Re - vel_r%Re*vel_curlz%Re
       p3%Re = vel_r%Re*vel_curlt%Re - vel_t%Re*vel_curlr%Re
       call tra_phys2coll(p1,vel_Nr, p2,vel_Nt, p3,vel_Nz)
-      
+
       call non_addHPF()
 
    end subroutine non_velocity
@@ -89,9 +89,9 @@
          vel_Nt%Re(:,nh) = vel_Nt%Re(:,nh) + a*vel_ut%Im(:,nh)
          vel_Nt%Im(:,nh) = vel_Nt%Im(:,nh) - a*vel_ut%Re(:,nh)
          vel_Nz%Re(:,nh) = vel_Nz%Re(:,nh) + a*vel_uz%Im(:,nh)  &
-                                           + b*vel_ur%Re(:,nh)  & 
+                                           + b*vel_ur%Re(:,nh)  &
                                            + d*temp_tau%Re(:,nh)
-         vel_Nz%Im(:,nh) = vel_Nz%Im(:,nh) - a*vel_uz%Re(:,nh)  & 
+         vel_Nz%Im(:,nh) = vel_Nz%Im(:,nh) - a*vel_uz%Re(:,nh)  &
                                            + b*vel_ur%Im(:,nh)  &
                                            + d*temp_tau%Im(:,nh)
 
@@ -106,7 +106,7 @@
 
       if(mpi_rnk/=0) return
       				! from background T0
-      vel_Nz%Re(:,0) = vel_Nz%Re(:,0) + d*temp_T0(:)
+      !vel_Nz%Re(:,0) = vel_Nz%Re(:,0) + d*temp_T0(:)
 				! zero mode real
       vel_Nr%Im(:,0) = 0d0
       vel_Nt%Im(:,0) = 0d0
@@ -119,25 +119,35 @@
 !  nonlinear terms for the tempertaure
 !-------------------------------------------------------------------------
    subroutine non_temperature()
-      double precision :: a(i_N), b(i_N)
+      double precision :: a(i_N-1), c
+      INTEGER :: R_index
       _loop_km_vars
 				! advection temperature, -u.grad(tau)
-      p%Re = -vel_r%Re*temp_gradr%Re  &
-            - vel_t%Re*temp_gradt%Re  &
-            - vel_z%Re*temp_gradz%Re
+      p%Re = -(vel_r%Re-d_beta*vel_curlt%Re)*temp_gradr%Re  &
+            - (vel_t%Re+d_beta*vel_curlr%Re)*temp_gradt%Re  &
+            - vel_z%Re*temp_gradz%Re  &
+            - d_beta*vel_lapz%Re*temp_p%Re &
+            - d_beta*vel_Up_phy%Re*temp_gradr%Re
+
+      ! Boundary Condition at r=R
+      if(mpi_rnk==_Np-1) then
+        R_index=mes_D%pN+mes_D%pNi-1
+        p%Re(:,:,R_index)=temp_gradr%Re(:,:,R_index)/d_Re/d_Pr/d_beta/ &
+          (vel_Up_phy%Re(:,:,R_index)-vel_curlt%Re(:,:,R_index))
+      end if
       call tra_phys2spec(p, s)
       call var_spec2coll(s, temp_N)
 
-      				! from background T0
-
-      b = -temp_T0p
+      ! Due to B.C., only compute 1:(i_N-1)
+      c = -d_beta*vel_Upp
       _loop_km_begin
-         a = d_alpha*k * vel_U
+         a = d_alpha*k * vel_U(1:i_N-1)
 
-         temp_N%Re(:,nh) = temp_N%Re(:,nh) + a*temp_tau%Im(:,nh)  &
-                                           + b*vel_ur%Re(:,nh) 
-         temp_N%Im(:,nh) = temp_N%Im(:,nh) - a*temp_tau%Re(:,nh)  & 
-                                           + b*vel_ur%Im(:,nh)
+         temp_N%Re(1:(i_N-1),nh) = temp_N%Re(1:(i_N-1),nh) + a*temp_tau%Im(1:(i_N-1),nh)  &
+                         + c*temp_tau%Re(1:(i_N-1),nh)
+
+         temp_N%Im(1:(i_N-1),nh) = temp_N%Im(1:(i_N-1),nh) - a*temp_tau%Re(1:(i_N-1),nh)  &
+                         + c*temp_tau%Im(1:(i_N-1),nh)
 
       _loop_km_end
       				! zero mode real
@@ -151,4 +161,3 @@
 !*************************************************************************
  end module nonlinear
 !*************************************************************************
-

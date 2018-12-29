@@ -11,13 +11,20 @@ MODSOBJ		= io.o meshs.o mpi.o nonlinear.o parameters.o \
 
 #COMPILER	= g95 -C
 #COMPFLAGS	= -cpp -c -O3
-#COMPILER	= ifort #-i-dynamic #-C #-static
-#COMPFLAGS	= -cpp -c -O3 -heap-arrays 1024 -mcmodel=medium
 #COMPILER	= pgf90 #-C
 #COMPFLAGS	= -Mpreprocess -c -fast #-mcmodel=medium
 #COMPILER	= pathf90 #-pg -C
 #COMPFLAGS	= -cpp -c -O3 -OPT:Ofast -march=opteron -fno-second-underscore
 
+ifeq (${FC},ifort)
+ifeq (${numcore},1)
+COMPILER	= ifort
+else
+COMPILER	= mpiifort
+endif
+COMPFLAGS	= -cpp -c -O3 -heap-arrays 1024 -mcmodel=medium -I/home/lsf212/netcdf_ifort/include
+LIBS = -mkl -L/home/lsf212/netcdf_ifort/lib cheby.o -lnetcdff
+else
 ifeq (${numcore},1)
 COMPILER	= gfortran
 else
@@ -30,6 +37,7 @@ LIBS		= \
 		  -L/usr/lib \
 		  cheby.o -lfftw3 -llapack -lnetcdff \
 		  # -lblas -lcurl
+endif
 
 #------------------------------------------------------------------------
 all : 	$(MODSOBJ) $(PROGDIR)main.f90
@@ -57,7 +65,11 @@ run :
 ifeq (${numcore},1)
 	(cd $(RUNDIR); nohup $(RUNDIR)/main.out > $(RUNDIR)/OUT 2> $(RUNDIR)/OUT.err &)
 else
+ifeq (${FC},ifort)
+	nohup mpirun -n ${numcore} -gwdir $(RUNDIR) ${RUNDIR}/main.out > ${RUNDIR}/OUT 2> ${RUNDIR}/OUT.err &)
+else
 	nohup mpirun -np ${numcore} -wd $(RUNDIR) $(RUNDIR)/main.out > $(RUNDIR)/OUT 2> $(RUNDIR)/OUT.err &
+endif
 endif
 
 runall :
@@ -69,7 +81,7 @@ runall :
 
 #------------------------------------------------------------------------
 clean :
-	rm -f *.o *.mod *.d *.il core *.out
+	rm -f *.o *.mod *.d *.il core *.out *.optrpt
 
 #------------------------------------------------------------------------
 io.o : $(PROGDIR)io.f90 temperature.o velocity.o
