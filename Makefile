@@ -47,6 +47,7 @@ all : 	$(MODSOBJ) $(PROGDIR)main.f90
 install : main.out
 	if test ! -d $(INSTDIR); then mkdir -p $(INSTDIR); fi
 	cp ./main.out $(INSTDIR)
+	if test -e ./$(UTIL).out; then cp ./$(UTIL).out $(INSTDIR); fi
 	date > $(INSTDIR)/main.info
 	echo $(HOSTNAME) >> $(INSTDIR)/main.info
 	pwd >> $(INSTDIR)/main.info
@@ -79,6 +80,13 @@ runall :
 	make run
 	make clean
 
+runutil :
+		make clean
+		make
+		make util
+		make install
+		make run
+		make clean
 #------------------------------------------------------------------------
 clean :
 	rm -f *.o *.mod *.d *.il core *.out *.optrpt

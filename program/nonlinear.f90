@@ -80,7 +80,7 @@
       _loop_km_vars
                   			! force from background HPF and from T
       b = -vel_Up
-      d = d_Gr / (2d0 * d_Re * d_Re)
+      d = d_Ri
 !      if(mpi_rnk==0) print*, 'd=',d
       _loop_km_begin
          a = d_alpha*k * vel_U
@@ -119,27 +119,29 @@
 !  nonlinear terms for the tempertaure
 !-------------------------------------------------------------------------
    subroutine non_temperature()
-      double precision :: a(i_N-1), c
+      double precision :: a(i_N-1), c, beta
       INTEGER :: R_index
       _loop_km_vars
+
+      beta=d_beta*d_Vs
 				! advection temperature, -u.grad(tau)
-      p%Re = -(vel_r%Re-d_beta*vel_curlt%Re)*temp_gradr%Re  &
-            - (vel_t%Re+d_beta*vel_curlr%Re)*temp_gradt%Re  &
+      p%Re = -(vel_r%Re-beta*vel_curlt%Re)*temp_gradr%Re  &
+            - (vel_t%Re+beta*vel_curlr%Re)*temp_gradt%Re  &
             - vel_z%Re*temp_gradz%Re  &
-            - d_beta*vel_lapz%Re*temp_p%Re &
-            - d_beta*vel_Up_phy%Re*temp_gradr%Re
+            - beta*vel_lapz%Re*temp_p%Re &
+            - beta*vel_Up_phy%Re*temp_gradr%Re
 
       ! Boundary Condition at r=R
       if(mpi_rnk==_Np-1) then
         R_index=mes_D%pN+mes_D%pNi-1
-        p%Re(:,:,R_index)=temp_gradr%Re(:,:,R_index)/d_Re/d_Pr/d_beta/ &
-          (vel_Up_phy%Re(:,:,R_index)-vel_curlt%Re(:,:,R_index))
+        p%Re(:,:,R_index)=temp_gradr%Re(:,:,R_index)/d_Re/d_Pr/beta/ &
+          (vel_Up_phy%Re(:,:,R_index)-vel_curlt%Re(:,:,R_index))*d_BC
       end if
       call tra_phys2spec(p, s)
       call var_spec2coll(s, temp_N)
 
       ! Due to B.C., only compute 1:(i_N-1)
-      c = -d_beta*vel_Upp
+      c = -beta*vel_Upp
       _loop_km_begin
          a = d_alpha*k * vel_U(1:i_N-1)
 
@@ -149,6 +151,13 @@
          temp_N%Im(1:(i_N-1),nh) = temp_N%Im(1:(i_N-1),nh) - a*temp_tau%Re(1:(i_N-1),nh)  &
                          + c*temp_tau%Im(1:(i_N-1),nh)
 
+         ! a = d_alpha*k * vel_U(1:i_N)
+         !
+         ! temp_N%Re(1:(i_N),nh) = temp_N%Re(1:(i_N),nh) + a*temp_tau%Im(1:(i_N),nh)  &
+         !                 + c*temp_tau%Re(1:(i_N),nh)
+         !
+         ! temp_N%Im(1:(i_N),nh) = temp_N%Im(1:(i_N),nh) - a*temp_tau%Re(1:(i_N),nh)  &
+         !                 + c*temp_tau%Im(1:(i_N),nh)
       _loop_km_end
       				! zero mode real
       if(mpi_rnk/=0) return

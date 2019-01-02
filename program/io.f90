@@ -108,14 +108,15 @@
 
          e=nf90_open(io_statefile, nf90_nowrite, f)     !f is the returned netCDF id
          if(e/=nf90_noerr) then
-            if(mpi_rnk==0) open(99, file='PRECOMPUTING')
-            if(mpi_rnk==0) close(99, status='delete')
+           if(mpi_rnk==0) open(99, file='PRECOMPUTING')
+           if(mpi_rnk==0) close(99, status='delete')
             if(mpi_rnk==0) print*, 'state file not found!: '//io_statefile
 #ifdef _MPI
-            call mpi_barrier(mpi_comm_world, mpi_er)
-            call mpi_finalize(mpi_er)
+           call mpi_barrier(mpi_comm_world, mpi_er)
+           call mpi_finalize(mpi_er)
 #endif
-            stop 'io_load_state: file not found!'
+           stop 'io_load_state: file not found!'
+            return
          end if
 
          e=nf90_get_att(f,nf90_global,'t', d)  !function nf90_get_att(ncid, varid, name, values)
@@ -125,15 +126,25 @@
          e=nf90_get_att(f,nf90_global,'Re', d)
          if(mpi_rnk==0 .and. dabs(d_Re-d)>1d-8)  &
             print*,' Re   :',d,' --> ', d_Re
-         e=nf90_get_att(f,nf90_global,'Gr', d)
-         if(e==nf90_noerr) then                 !if no errors occurred
-            if(mpi_rnk==0 .and. dabs(d_Gr-d)>1d-8)  &
-               print*,' Gr   :',d,' --> ', d_Gr
-         end if
          e=nf90_get_att(f,nf90_global,'Pr', d)
          if(e==nf90_noerr) then                 !if no errors occurred
             if(mpi_rnk==0 .and. dabs(d_Pr-d)>1d-8)  &
                print*,' Pr   :',d,' --> ', d_Pr
+         end if
+         e=nf90_get_att(f,nf90_global,'beta', d)
+         if(e==nf90_noerr) then                 !if no errors occurred
+            if(mpi_rnk==0 .and. dabs(d_beta-d)>1d-8)  &
+               print*,' beta   :',d,' --> ', d_beta
+         end if
+         e=nf90_get_att(f,nf90_global,'Ri', d)
+         if(e==nf90_noerr) then                 !if no errors occurred
+            if(mpi_rnk==0 .and. dabs(d_Ri-d)>1d-8)  &
+               print*,' Ri   :',d,' --> ', d_Ri
+         end if
+         e=nf90_get_att(f,nf90_global,'Vs', d)
+         if(e==nf90_noerr) then                 !if no errors occurred
+            if(mpi_rnk==0 .and. dabs(d_Vs-d)>1d-8)  &
+               print*,' Vs   :',d,' --> ', d_Vs
          end if
          e=nf90_get_att(f,nf90_global,'alpha', d)
          if(mpi_rnk==0 .and. dabs(d_alpha-d)>1d-8)  &
@@ -170,10 +181,11 @@
          deallocate(r)
 
          e=nf90_close(f)
+
 #ifdef _MPI
          call mpi_barrier(mpi_comm_world, mpi_er)
 #endif
-
+        if(mpi_rnk==0) print*, ' Loading Initial State success!'
       end subroutine io_load_state
 
 
@@ -197,7 +209,7 @@
       e=nf90_inq_varid(f,nm, i)
       if(e/=nf90_noerr) then
       	if(mpi_rnk==0) print*, 'WARNING: Field '//nm//' not found!'
-	call var_coll_init(a)
+!	call var_coll_init(a)
         return
       end if
 !      if(e/=nf90_noerr)  stop 'io_load_coll'
@@ -318,11 +330,13 @@
 
       if(mpi_rnk==0) then
          print*, ' saving state'//cnum//'  t=', tim_t
-         e=nf90_create('state'//cnum//'.cdf.dat', nf90_clobber, f)
+         e=nf90_create('state'//cnum//'.nf', nf90_clobber, f)
 
          e=nf90_put_att(f, nf90_global, 't', tim_t)
          e=nf90_put_att(f, nf90_global, 'Re', d_Re)
-         e=nf90_put_att(f, nf90_global, 'Gr', d_Gr)
+         e=nf90_put_att(f, nf90_global, 'Ri', d_Ri)
+         e=nf90_put_att(f, nf90_global, 'beta', d_beta)
+         e=nf90_put_att(f, nf90_global, 'Vs', d_Vs)
          e=nf90_put_att(f, nf90_global, 'Pr', d_Pr)
          e=nf90_put_att(f, nf90_global, 'alpha', d_alpha)
 
@@ -516,7 +530,7 @@ end subroutine io_save_spectrum
       write(11,*) '# r  uz(r)'
       do n = 1, i_N
         write(11,'(3e20.12)')  mes_D%r(n,1),  &
-           vel_uz%Re(n,0) + 1d0-mes_D%r(n,2), 1d0-mes_D%r(n,2) + 1d0/32d0 * d_Gr/d_Re * ( 1d0-mes_D%r(n,2) ) * ( 3d0-mes_D%r(n,2) )
+           vel_uz%Re(n,0) + 1d0-mes_D%r(n,2), 1d0-mes_D%r(n,2) + 1d0/16d0 * d_Ri*d_Re * ( 1d0-mes_D%r(n,2) ) * ( 3d0-mes_D%r(n,2) )
       end do
       close(11)
 

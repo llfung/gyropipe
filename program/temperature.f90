@@ -46,13 +46,14 @@
 !------------------------------------------------------------------------
    subroutine temp_matrices()
       double precision :: d1, d2
-      integer :: j,nl,nr,n
+      integer :: j,nl,nr,n,kk
       _loop_km_vars
 
 			! lhs matrices
       d1 =  1d0/tim_dt
       d2 = -d_implicit/(d_Re*d_Pr)
-      call tim_lumesh_init(0,i_KL+1,d1,d2, LD)
+      ! call tim_lumesh_init(0,0,d1,d2, LD)
+      call tim_lumesh_init(0,0,d1,d2, LD)
 
       			! timestepping matrices for rhs
       d1 =  1d0/tim_dt
@@ -97,16 +98,32 @@
 !  Advance equations one timestep.
 !------------------------------------------------------------------------
    subroutine temp_step()
+    type (coll) :: tgradr,ugradr
+    double PRECISION :: bc
+     integer :: R_index
 				     	! get rhs = A u_ + N
       call tim_meshmult(0,Lt,T_,temp_N, temp_tau) !tim_meshmult(S,A,b,c, d)
 						!  multiply  d = A b + c
 						!  S=0, b even for m even; S=1, b odd for m even
+            call var_coll_meshmult(0,mes_D%dr(1),T_,tgradr)
 
-
+          if(mpi_rnk==_Np-1) then
+              R_index=mes_D%pN+mes_D%pNi-1
+            print*, temp_tau%Re(R_index,0)
+            print*, temp_N%Re(R_index,0)
+            print*, mes_D%r(R_index,1)
+            print*, R_index
+          end if
       !call tim_zerobc(temp_tau)
         				! invert
       call tim_lumesh_invert(0,LD, temp_tau)
-
+      if(mpi_rnk==_Np-1) then
+          R_index=mes_D%pN+mes_D%pNi-1
+          bc=-tgradr%Re(R_index,0)/2d0/d_Re/d_Pr/d_beta/d_Vs
+        print*, temp_tau%Re(R_index,0)
+        print*, bc
+        print*,''
+      end if
       if(mpi_rnk==0)  &
          temp_tau%Im(:,0) = 0d0
 

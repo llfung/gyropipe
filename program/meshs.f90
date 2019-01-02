@@ -49,7 +49,8 @@
       integer          :: N, pNi,pN, pNi_(0:_Np-1),pN_(0:_Np-1)
       double precision :: r(i_N,-3:3)
       double precision :: intrdr(i_N)
-      double precision :: dr0(1:1+i_KL,0:i_KL), dr1(1:1+i_KL,0:i_KL)
+      double precision :: dr0(1:1+i_KL,0:i_KL), dr1(1:1+i_KL,0:i_KL) !Boundary differential at r=0 and r=1.
+      ! e.g. d/dr at r=1 can be obtained from dr1(:,1)
       type (mesh)      :: dr(i_KL)
       type (mesh)      :: radLap
    end type rdom
@@ -65,7 +66,7 @@
 !------------------------------------------------------------------------
    subroutine mes_precompute()
       double precision :: dr
-      integer :: n, N_
+      integer :: n, N_, kk
       logical :: file_exist
          			! collocation pts
                                 ! T_{N-1}(x) has N extrema
@@ -80,13 +81,13 @@
          read(99,*) n
          if(n/=i_N) stop 'mes_precompute: mesh.in err1: N mismatch'
          do n = 1, i_N
-            read(99,*) mes_D%r(n,1) 
+            read(99,*) mes_D%r(n,1)
          end do
          close(99)
          if(mes_D%r(1,1)<0d0) stop 'mes_precompute: mesh.in err 2'
          dr = dabs(mes_D%r(i_N,1)-1d0)
          if(dr>1d-8) stop 'mes_precompute: mesh.in err 3'
-         
+
       else ! default mesh
          N_ = i_N+int(dsqrt(dble(i_N)))
          do n = N_-i_N+1, N_
@@ -97,8 +98,25 @@
             mes_D%r(:,1) = mes_D%r(:,1)*(1d0+dr) - dr
          end do
       end if
-      
+
       call mes_rdom_init(mes_D)
+      if (mpi_rnk==0) then
+          open(53, file='dr.txt')
+          do kk=1,2*i_KL+1
+            write(53,*) mes_D%dr(1)%M(kk,:)
+          end do
+          close(53)
+          open(53, file='dr1.txt')
+          do kk=1,i_KL+1
+            write(53,*) mes_D%dr1(kk,:)
+          end do
+          close(53)
+          open(53, file='dr0.txt')
+          do kk=1,i_KL+1
+            write(53,*) mes_D%dr0(kk,:)
+          end do
+          close(53)
+      end if
 
    end subroutine mes_precompute
 
@@ -135,7 +153,7 @@
          D%r(:,j) = D%r(:,1)**j
       end do
 
-                                ! get finite difference weights    
+                                ! get finite difference weights
       if(i_KL<2) stop 'mes: KL<2'
       do i = 1, i_KL
          D%dr(i)%M = 0d0
@@ -179,7 +197,7 @@
          nn = r-l+1
 	 do i = 1, nn
 	    call mes_weights(i-1,nn,r_(l),r_(n), w)
-	    A(i,:) = w 
+	    A(i,:) = w
 	 end do
          c = 1d0
          e = 1d0
@@ -203,17 +221,17 @@
       double precision, intent(out) :: w(n)
       double precision :: A(n,n)
       integer :: j
-   
+
       A(:,1) = 1d0
       do j = 2, n
          A(:,j) = A(:,j-1) * (x-x0) / dble(j-1)
       end do
       call mes_mat_invert(n,A,n)
       w = A(i+1,:)
-	 
-   end subroutine mes_weights 
-	 
-	 
+
+   end subroutine mes_weights
+
+
 !------------------------------------------------------------------------
 !  Replace nxn matrix A by its inverse
 !------------------------------------------------------------------------
@@ -222,7 +240,7 @@
       double precision, intent(inout) :: A(lda,n)
       double precision :: work(n)
       integer :: info, ipiv(n)
-   
+
       call dgetrf(n, n, A, lda, ipiv, info)
       if(info /= 0) stop 'matrix inversion error 1'
 
@@ -239,7 +257,7 @@
       double precision, intent(inout) :: Ar(lda,n), Ai(lda,n)
       double complex :: A(lda,n), work(n)
       integer :: info, ipiv(n)
-   
+
       A = dcmplx(Ar,Ai)
 
       call zgetrf(n, n, A, lda, ipiv, info)
@@ -247,7 +265,7 @@
 
       call zgetri(n, A, lda, ipiv, work, n, info)
       if(info /= 0) stop 'mat_invert_complex, zgetri fail'
-      
+
       Ar =  dble(A)
       Ai = dimag(A)
 

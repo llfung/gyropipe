@@ -30,6 +30,7 @@
             call vel_matrices() !    precomputation of matrices for timestepping
             call temp_matrices()
       end if
+      ! if(mpi_rnk==0) print*, 'cfl_dt=', tim_cfl_dt
       call var_null(1)          ! where you put util()
       call io_write2files()     ! I/O files
       call vel_predictor()      ! vel_step() called inside (the main stepping algorithm)
@@ -49,7 +50,8 @@
 
       tim_t    = tim_t    + tim_dt
       tim_step = tim_step + 1
-
+      ! if(mpi_rnk==0) print*, 't=', tim_t
+      ! if(mpi_rnk==0) print*, 'dt=', tim_dt
    end do
       						! end main loop
 
