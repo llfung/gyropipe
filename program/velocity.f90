@@ -59,12 +59,10 @@
       vel_Up  = - 2d0*mes_D%r(:,1)
       vel_Upp = - 4d0
 
-      do i=0,i_pH1
-        vel_Up_col%Re(:,i)=- 2d0*mes_D%r(:,1)
-        vel_Up_col%Im(:,i)=0d0
-      end do
+      call var_coll_init(vel_Up_col)
+      vel_Up_col%Re(:,0)=- 2d0*mes_D%r(:,1)
       call tra_coll2phys(vel_Up_col, vel_Up_phy)
-      
+
    end subroutine vel_precompute
 
 

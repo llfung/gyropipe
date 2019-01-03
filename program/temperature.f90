@@ -52,7 +52,7 @@
 			! lhs matrices
       d1 =  1d0/tim_dt
       d2 = -d_implicit/(d_Re*d_Pr)
-      call tim_lumesh_init(0,i_KL+1,d1,d2, LD)
+      call tim_lumesh_init(0,0,d1,d2, LD)
 
       			! timestepping matrices for rhs
       d1 =  1d0/tim_dt
