@@ -108,7 +108,7 @@
          double precision, intent(in)  :: c1,c2
          type (lumesh),    intent(out) :: A(0:i_pH1)
          double precision :: d(i_N)
-         integer :: info, n,j, S
+         integer :: info, n,j, S,kk
          _loop_km_vars
 
          _loop_km_begin
@@ -128,8 +128,15 @@
             end do
    					! boundary condition
                 do j = i_N-i_KL, i_N
-                   A(nh)%M(2*i_KL+1+i_N-j,j) = mes_D%dr1(i_KL-i_N+j+1,BC)*1d5
+                   A(nh)%M(2*i_KL+1+i_N-j,j) = mes_D%dr1(i_KL-i_N+j+1,BC)
                 end do
+                ! if (mpi_rnk==0 .and. nh==0) then
+                !   open(53,file='A.txt')
+                !   do kk=1,3*i_KL+1
+                !     write(53,*) A(nh)%M(kk,:)
+                !   end do
+                !   close(53)
+                ! end if
 
             call dgbtrf(i_N,i_N,i_KL,i_KL,A(nh)%M,3*i_KL+1,A(nh)%ipiv,info)
             if(info /= 0) stop 'tim_lumesh_init'

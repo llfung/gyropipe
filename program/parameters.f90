@@ -20,10 +20,10 @@
    integer,          parameter :: i_Mp          = 1
 
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
-   double precision            :: d_Re          = 0.4
-   double precision            :: d_Pr          = 25d1
-   double precision            :: d_Ri          = 20.58d0
-   double precision            :: d_Vs          = 0.63d0
+   double precision            :: d_Re          = 4d0
+   double precision            :: d_Pr          = 25d0
+   double precision            :: d_Ri          = 0d0!0.2058d-1
+   double precision            :: d_Vs          = 0.063d0
    double precision            :: d_beta        = 1.025d-1
    double precision            :: d_alpha       = 1.25d0
    logical,          parameter :: b_const_flux  = .true.
@@ -33,14 +33,14 @@
    double precision, parameter :: d_minE3d      = 1d-5
 
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
-   integer,          parameter :: i_save_rate1  = 1!100
-   integer,          parameter :: i_save_rate2  = 1
-   integer,          parameter :: i_maxtstep    = 10
+   integer,          parameter :: i_save_rate1  = 1000!100
+   integer,          parameter :: i_save_rate2  = 200
+   integer,          parameter :: i_maxtstep    = 10000
    double precision, parameter :: d_maxt        = -1d0
    double precision, parameter :: d_cpuhours    = 1d99 !90d0
    double precision, parameter :: d_time        = 0d0 !-1d0
-   double precision, parameter :: d_timestep    = 0.01d0 !-1d0
-   double precision, parameter :: d_maxdt       = 0.02d0 !1d99
+   double precision, parameter :: d_timestep    = 0.001d0 !-1d0
+   double precision, parameter :: d_maxdt       = 0.002d0 !1d99
    double precision, parameter :: d_dterr       = 1d-5 !1d99
    double precision, parameter :: d_courant     = 0.5d0
    double precision, parameter :: d_implicit    = 0.51d0

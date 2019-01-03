@@ -382,6 +382,7 @@
       call tim_lumesh_invert(0,LDp, vel_ur)
       call tim_lumesh_invert(0,LDm, vel_ut)
       call tim_lumesh_invert(0,LDz, vel_uz)
+
       call vel_adjPPE(2)                           ! Apply BC
       call vel_pm2rt(vel_ur,vel_ut, vel_ur,vel_ut) ! Transform resulting up,um back into ur,ur
          				! Adjust Flux if needed

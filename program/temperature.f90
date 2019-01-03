@@ -36,7 +36,7 @@
 !------------------------------------------------------------------------
    subroutine temp_precompute()
       call var_coll_init(temp_tau)
-      temp_tau%Re(:,0)=(1d0 - mes_D%r(:,2))*d_Re*d_Pr*d_beta*d_Vs
+      temp_tau%Re(:,0)=(1d0 - mes_D%r(:,2))*d_Re*d_Pr*d_beta*d_Vs/2/d_PI
     !  temp_T0  =  1d0 - mes_D%r(:,2)	! 1 - r^2
     !  temp_T0p = - 2d0 * mes_D%r(:,1)	! dT/dr
    end subroutine temp_precompute
@@ -99,15 +99,18 @@
 !------------------------------------------------------------------------
    subroutine temp_step()
 				     	! get rhs = A u_ + N
+      ! print*, 'T Non-linear Re: ', maxval(temp_N%Re)
+      ! print*, 'T Non-linear Im: ', maxval(temp_N%Im)
       call tim_meshmult(0,Lt,T_,temp_N, temp_tau) !tim_meshmult(S,A,b,c, d)
 						!  multiply  d = A b + c
 						!  S=0, b even for m even; S=1, b odd for m even
 
-
+      ! print*, 'Before B.C. : ', maxval(temp_tau%Re)
       call temp_tempbc(temp_tau)
         				! invert
+      ! print*, 'Before: ', maxval(temp_tau%Re)
       call tim_lumesh_invert(0,LD, temp_tau)
-
+      ! print*, 'After: ', maxval(temp_tau%Re)
       if(mpi_rnk==0)  &
          temp_tau%Im(:,0) = 0d0
 
@@ -141,7 +144,7 @@
      type (coll), intent(inout) :: a
      integer :: n
      double precision :: fac, gradrRe,gradrIm
-     fac=d_Re*d_Pr*d_beta*d_Vs*1d5
+     fac=d_Re*d_Pr*d_beta*d_Vs
      do n = 0, var_H%pH1
         gradrRe=dot_product(mes_D%dr1(1:1+i_KL,1),vel_uz%Re(i_N-i_KL:i_N,n))
         gradrIm=dot_product(mes_D%dr1(1:1+i_KL,1),vel_uz%Im(i_N-i_KL:i_N,n))

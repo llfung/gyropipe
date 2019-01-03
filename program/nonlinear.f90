@@ -64,7 +64,16 @@
    subroutine non_velocity()
       type (phys) :: p1,p2,p3
       double precision :: d
-      d= d_Ri / dot_product(dexp(temp_tau%Re(:,0)),mes_D%intrdr)
+      ! if (mpi_rnk==0)
+      ! print*, temp_p%Re(0,0,1)
+      if (mpi_rnk==0) d = dot_product(dexp(temp_tau%Re(:,0)),mes_D%intrdr)
+      if (mpi_rnk==0) print*, d, '   ', mpi_rnk
+       d= d_Ri / dot_product(dexp(temp_tau%Re(:,0)),mes_D%intrdr)
+      if (mpi_rnk==0)  print*, d
+      ! print*, maxval(temp_p%Re)
+      ! print*, maxval(d*dexp(temp_p%Re))
+      ! print*, '  '
+      ! print*, '  '
          			! advection  u x curlu
       p1%Re = vel_t%Re*vel_curlz%Re - vel_z%Re*vel_curlt%Re
       p2%Re = vel_z%Re*vel_curlr%Re - vel_r%Re*vel_curlz%Re
@@ -138,15 +147,14 @@
       _loop_km_begin
          a = d_alpha*k * vel_U
 
-         temp_N%Re(:,nh) = temp_N%Re(:,nh) + a*temp_tau%Im(:,nh)  &
-                         + c
+         temp_N%Re(:,nh) = temp_N%Re(:,nh) + a*temp_tau%Im(:,nh)
 
-         temp_N%Im(:,nh) = temp_N%Im(:,nh) - a*temp_tau%Re(:,nh)  &
-                         + c
+         temp_N%Im(:,nh) = temp_N%Im(:,nh) - a*temp_tau%Re(:,nh)
 
       _loop_km_end
       				! zero mode real
       if(mpi_rnk/=0) return
+      temp_N%Re(:,0) = temp_N%Re(:,0)+c
       temp_N%Im(:,0) = 0d0
 !      temp_N%Re(:,0) = temp_N%Re(:,0) + 4d0/(d_Re*d_Pr)
 
