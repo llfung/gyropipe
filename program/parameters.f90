@@ -33,9 +33,9 @@
    double precision, parameter :: d_minE3d      = 1d-5
 
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
-   integer,          parameter :: i_save_rate1  = 10000!100
-   integer,          parameter :: i_save_rate2  = 1000
-   integer,          parameter :: i_maxtstep    = 5000
+   integer,          parameter :: i_save_rate1  = 1!100
+   integer,          parameter :: i_save_rate2  = 1
+   integer,          parameter :: i_maxtstep    = 10
    double precision, parameter :: d_maxt        = -1d0
    double precision, parameter :: d_cpuhours    = 1d99 !90d0
    double precision, parameter :: d_time        = 0d0 !-1d0

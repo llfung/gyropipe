@@ -21,6 +21,7 @@
    type (phys) :: vel_lapt
    type (phys) :: vel_lapz
    type (phys) :: vel_Up_phy
+   type (coll) :: vel_Up_col
    type (coll) :: vel_ur
    type (coll) :: vel_ut
    type (coll) :: vel_uz
@@ -49,7 +50,7 @@
 !------------------------------------------------------------------------
    subroutine vel_precompute()
       INTEGER :: i,j
-      type(coll) :: vel_Up_col
+      !type(coll) :: vel_Up_col
       call var_coll_init(vel_ur)
       call var_coll_init(vel_ut)
       call var_coll_init(vel_uz)

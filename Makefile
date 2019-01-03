@@ -108,7 +108,7 @@ nonlinear.o : $(PROGDIR)nonlinear.f90 temperature.o velocity.o
 parameters.o : $(PROGDIR)parameters.f90 parallel.h
 	$(COMPILER) $(COMPFLAGS) $(PROGDIR)parameters.f90
 
-temperature.o : $(PROGDIR)temperature.f90 timestep.o transform.o
+temperature.o : $(PROGDIR)temperature.f90 timestep.o transform.o velocity.o
 		$(COMPILER) $(COMPFLAGS) $(PROGDIR)temperature.f90
 
 timestep.o : $(PROGDIR)timestep.f90 variables.o

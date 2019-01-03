@@ -99,7 +99,43 @@
       _loop_km_end
 
    end subroutine tim_lumesh_init
+   !------------------------------------------------------------------------
+   !  Sets  A = c1 I + c2 Lap(h)  then replaces A with its LU factorisation
+   !  if PM==0 usual laplacian, PM==-1/1 modified laplacian
+   !------------------------------------------------------------------------
+      subroutine tim_lumesh_init_mod(PM,BC,c1,c2, A)
+         integer,          intent(in)  :: PM,BC
+         double precision, intent(in)  :: c1,c2
+         type (lumesh),    intent(out) :: A(0:i_pH1)
+         double precision :: d(i_N)
+         integer :: info, n,j, S
+         _loop_km_vars
 
+         _loop_km_begin
+            d = -mes_D%r(:,-2)*i_Mp*m*i_Mp*m - d_alpha*k*d_alpha*k
+            if(PM/=0) d = d - mes_D%r(:,-2) - 2d0*PM*i_Mp*m*mes_D%r(:,-2)
+            A(nh)%M(i_KL+1:, :) = c2 * mes_D%radLap%M(:,1:)
+            A(nh)%M(2*i_KL+1,:) = A(nh)%M(2*i_KL+1,:) + c2*d + c1
+
+            ! assume symmetry on axis: S==-1 mode odd,  S==1 mode even
+            S = modulo(m*i_Mp+abs(PM),2)
+            S = 1 - 2*S
+            do j = 1, i_KL
+               do n = 1, i_KL+1-j
+                  A(nh)%M(2*i_KL+1+n-j, j) = A(nh)%M(2*i_KL+1+n-j, j)  &
+                     + c2 * S * mes_D%radLap%M(i_KL+1+n-(1-j), (1-j))
+               end do
+            end do
+   					! boundary condition
+                do j = i_N-i_KL, i_N
+                   A(nh)%M(2*i_KL+1+i_N-j,j) = mes_D%dr1(i_KL-i_N+j+1,BC)*1d5
+                end do
+
+            call dgbtrf(i_N,i_N,i_KL,i_KL,A(nh)%M,3*i_KL+1,A(nh)%ipiv,info)
+            if(info /= 0) stop 'tim_lumesh_init'
+         _loop_km_end
+
+      end subroutine tim_lumesh_init_mod
 
 !------------------------------------------------------------------------
 !  solve system Ax=y for x, replaces b;  uses lapack routine dgbtrs()

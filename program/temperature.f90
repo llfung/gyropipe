@@ -7,6 +7,7 @@
 !*************************************************************************
    use transform
    use timestep
+   use velocity
    implicit none
    save
 
@@ -35,7 +36,7 @@
 !------------------------------------------------------------------------
    subroutine temp_precompute()
       call var_coll_init(temp_tau)
-      temp_tau%Re(:,0)=1d0 - mes_D%r(:,2)
+      temp_tau%Re(:,0)=(1d0 - mes_D%r(:,2))*d_Re*d_Pr*d_beta*d_Vs
     !  temp_T0  =  1d0 - mes_D%r(:,2)	! 1 - r^2
     !  temp_T0p = - 2d0 * mes_D%r(:,1)	! dT/dr
    end subroutine temp_precompute
@@ -52,7 +53,7 @@
 			! lhs matrices
       d1 =  1d0/tim_dt
       d2 = -d_implicit/(d_Re*d_Pr)
-      call tim_lumesh_init(0,0,d1,d2, LD)
+      call tim_lumesh_init_mod(0,1,d1,d2, LD)
 
       			! timestepping matrices for rhs
       d1 =  1d0/tim_dt
@@ -103,7 +104,7 @@
 						!  S=0, b even for m even; S=1, b odd for m even
 
 
-      !call tim_zerobc(temp_tau)
+      call temp_tempbc(temp_tau)
         				! invert
       call tim_lumesh_invert(0,LD, temp_tau)
 
@@ -111,8 +112,6 @@
          temp_tau%Im(:,0) = 0d0
 
    end subroutine temp_step
-
-
 !------------------------------------------------------------------------
 !  predictor with euler nonlinear terms
 !------------------------------------------------------------------------
@@ -135,6 +134,21 @@
 
    end subroutine temp_corrector
 
+!------------------------------------------------------------------------
+!  B.C. no-flux at r=1
+!------------------------------------------------------------------------
+  subroutine temp_tempbc(a)
+     type (coll), intent(inout) :: a
+     integer :: n
+     double precision :: fac, gradrRe,gradrIm
+     fac=d_Re*d_Pr*d_beta*d_Vs*1d5
+     do n = 0, var_H%pH1
+        gradrRe=dot_product(mes_D%dr1(1:1+i_KL,1),vel_uz%Re(i_N-i_KL:i_N,n))
+        gradrIm=dot_product(mes_D%dr1(1:1+i_KL,1),vel_uz%Im(i_N-i_KL:i_N,n))
+        a%Re(i_N, n ) = fac*(vel_Up_col%Re(i_N,n)+gradrRe)
+        a%Im(i_N, n ) = fac*(vel_Up_col%Im(i_N,n)+gradrIm)
+     end do
+  end subroutine temp_tempbc
 
 !*************************************************************************
  end module temperature
