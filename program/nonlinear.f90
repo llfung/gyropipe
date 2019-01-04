@@ -68,7 +68,7 @@
       ! print*, temp_p%Re(0,0,1)
        ! if (mpi_rnk==0)  d = dot_product(dexp(temp_tau%Re(:,0)),mes_D%intrdr)
        ! if (mpi_rnk==0)  print*, d, '   ', mpi_rnk
-       d= d_Ri / dot_product(dexp(temp_tau%Re(:,0)),mes_D%intrdr)
+       d= d_Ri /2d0/ dot_product(dexp(temp_tau%Re(:,0)),mes_D%intrdr)
       ! if (mpi_rnk==0)  print*, d
       ! print*, maxval(temp_p%Re)
       ! print*, maxval(d*dexp(temp_p%Re))
@@ -135,8 +135,8 @@
             - (vel_t%Re+beta*vel_curlr%Re)*temp_gradt%Re  &
             - vel_z%Re*temp_gradz%Re  &
             - beta*vel_lapz%Re &
-            - beta*vel_Up_phy%Re*temp_gradr%Re !&
-            !+ (temp_gradr%Re*temp_gradr%Re+ temp_gradt%Re*temp_gradt%Re+temp_gradz%Re*temp_gradz%Re)/d_Pr/d_Re
+            - beta*vel_Up_phy%Re*temp_gradr%Re &
+            + (temp_gradr%Re*temp_gradr%Re+ temp_gradt%Re*temp_gradt%Re+temp_gradz%Re*temp_gradz%Re)/d_Pr/d_Re
       ! print*, 'max gradr: ',maxval(temp_gradr%Re), mpi_rnk
       ! print*, 'max gradt: ',maxval(temp_gradt%Re), mpi_rnk
       ! print*, 'max gradz: ',maxval(temp_gradz%Re), mpi_rnk

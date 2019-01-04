@@ -37,7 +37,7 @@
    subroutine temp_precompute()
       call var_coll_init(temp_tau)
       if (mpi_rnk/=0) return
-      temp_tau%Re(:,0)=(1d0 - mes_D%r(:,2))*d_Re*d_Pr*d_beta*d_Vs/2/d_PI
+      temp_tau%Re(:,0)=(1d0 - mes_D%r(:,2))*d_Re*d_Pr*d_beta*d_Vs
     !  temp_T0  =  1d0 - mes_D%r(:,2)	! 1 - r^2
     !  temp_T0p = - 2d0 * mes_D%r(:,1)	! dT/dr
    end subroutine temp_precompute
