@@ -66,10 +66,10 @@
       double precision :: d
       ! if (mpi_rnk==0)
       ! print*, temp_p%Re(0,0,1)
-      if (mpi_rnk==0) d = dot_product(dexp(temp_tau%Re(:,0)),mes_D%intrdr)
-      if (mpi_rnk==0) print*, d, '   ', mpi_rnk
+       ! if (mpi_rnk==0)  d = dot_product(dexp(temp_tau%Re(:,0)),mes_D%intrdr)
+       ! if (mpi_rnk==0)  print*, d, '   ', mpi_rnk
        d= d_Ri / dot_product(dexp(temp_tau%Re(:,0)),mes_D%intrdr)
-      if (mpi_rnk==0)  print*, d
+      ! if (mpi_rnk==0)  print*, d
       ! print*, maxval(temp_p%Re)
       ! print*, maxval(d*dexp(temp_p%Re))
       ! print*, '  '
@@ -127,7 +127,6 @@
 !-------------------------------------------------------------------------
    subroutine non_temperature()
       double precision :: a(i_N), c, beta
-      INTEGER :: R_index
       _loop_km_vars
 
       beta=d_beta*d_Vs
@@ -136,14 +135,15 @@
             - (vel_t%Re+beta*vel_curlr%Re)*temp_gradt%Re  &
             - vel_z%Re*temp_gradz%Re  &
             - beta*vel_lapz%Re &
-            - beta*vel_Up_phy%Re*temp_gradr%Re &
-            + (temp_gradr%Re*temp_gradr%Re+ temp_gradt%Re*temp_gradt%Re+temp_gradz%Re*temp_gradz%Re)/d_Pr/d_Re
-
+            - beta*vel_Up_phy%Re*temp_gradr%Re !&
+            !+ (temp_gradr%Re*temp_gradr%Re+ temp_gradt%Re*temp_gradt%Re+temp_gradz%Re*temp_gradz%Re)/d_Pr/d_Re
+      ! print*, 'max gradr: ',maxval(temp_gradr%Re), mpi_rnk
+      ! print*, 'max gradt: ',maxval(temp_gradt%Re), mpi_rnk
+      ! print*, 'max gradz: ',maxval(temp_gradz%Re), mpi_rnk
       call tra_phys2spec(p, s)
       call var_spec2coll(s, temp_N)
 
       ! Due to B.C., only compute 1:(i_N-1)
-      c = -beta*vel_Upp
       _loop_km_begin
          a = d_alpha*k * vel_U
 
@@ -154,7 +154,7 @@
       _loop_km_end
       				! zero mode real
       if(mpi_rnk/=0) return
-      temp_N%Re(:,0) = temp_N%Re(:,0)+c
+      temp_N%Re(:,0) = temp_N%Re(:,0)-beta*vel_Upp
       temp_N%Im(:,0) = 0d0
 !      temp_N%Re(:,0) = temp_N%Re(:,0) + 4d0/(d_Re*d_Pr)
 

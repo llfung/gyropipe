@@ -36,6 +36,7 @@
 !------------------------------------------------------------------------
    subroutine temp_precompute()
       call var_coll_init(temp_tau)
+      if (mpi_rnk/=0) return
       temp_tau%Re(:,0)=(1d0 - mes_D%r(:,2))*d_Re*d_Pr*d_beta*d_Vs/2/d_PI
     !  temp_T0  =  1d0 - mes_D%r(:,2)	! 1 - r^2
     !  temp_T0p = - 2d0 * mes_D%r(:,1)	! dT/dr
@@ -81,16 +82,10 @@
    subroutine temp_transform()
 
       call var_coll_grad(temp_tau, c1,c2,c3)
+      call tra_coll2phys(c1,temp_gradr, c2,temp_gradt, c3,temp_gradz)
 
-      call var_coll2spec(c1, s)
-      call tra_spec2phys( s, temp_gradr)
-      call var_coll2spec(c2, s)
-      call tra_spec2phys( s, temp_gradt)
-      call var_coll2spec(c3, s)
-      call tra_spec2phys( s, temp_gradz)
+      call tra_coll2phys(temp_tau,temp_p)
 
-      call var_coll2spec(temp_tau, s)
-      call tra_spec2phys( s, temp_p)
    end subroutine temp_transform
 
 
@@ -99,18 +94,18 @@
 !------------------------------------------------------------------------
    subroutine temp_step()
 				     	! get rhs = A u_ + N
-      ! print*, 'T Non-linear Re: ', maxval(temp_N%Re)
-      ! print*, 'T Non-linear Im: ', maxval(temp_N%Im)
+       ! print*, 'T Non-linear Re: ', maxval(temp_N%Re), mpi_rnk
+       ! print*, 'T Non-linear Im: ', maxval(temp_N%Im), mpi_rnk
       call tim_meshmult(0,Lt,T_,temp_N, temp_tau) !tim_meshmult(S,A,b,c, d)
 						!  multiply  d = A b + c
 						!  S=0, b even for m even; S=1, b odd for m even
 
-      ! print*, 'Before B.C. : ', maxval(temp_tau%Re)
+       ! print*, 'Before B.C. : ', maxval(temp_tau%Re), mpi_rnk
       call temp_tempbc(temp_tau)
         				! invert
-      ! print*, 'Before: ', maxval(temp_tau%Re)
+       ! print*, 'Before: ', maxval(temp_tau%Re), mpi_rnk
       call tim_lumesh_invert(0,LD, temp_tau)
-      ! print*, 'After: ', maxval(temp_tau%Re)
+       ! print*, 'After: ', maxval(temp_tau%Re), mpi_rnk
       if(mpi_rnk==0)  &
          temp_tau%Im(:,0) = 0d0
 
