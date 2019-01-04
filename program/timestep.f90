@@ -89,7 +89,7 @@
          end do
 					! boundary condition
              do j = i_N-i_KL, i_N
-                A(nh)%M(2*i_KL+1+i_N-j,j) = mes_D%dr1(i_KL-i_N+j+1,BC)*d_BC
+                A(nh)%M(2*i_KL+1+i_N-j,j) = mes_D%dr1(i_KL-i_N+j+1,BC)!*d_BC
              end do
          if(BC==1 .and. k==0 .and. m==0) cycle
 

@@ -35,7 +35,8 @@
 !------------------------------------------------------------------------
    subroutine temp_precompute()
       call var_coll_init(temp_tau)
-      temp_tau%Re(:,0)=1d0 - mes_D%r(:,2)
+      if (mpi_rnk/=0) return
+      temp_tau%Re(:,0)=(1d0 - mes_D%r(:,2))!*d_Re*d_Pr*d_beta*d_Vs
     !  temp_T0  =  1d0 - mes_D%r(:,2)	! 1 - r^2
     !  temp_T0p = - 2d0 * mes_D%r(:,1)	! dT/dr
    end subroutine temp_precompute
@@ -53,7 +54,7 @@
       d1 =  1d0/tim_dt
       d2 = -d_implicit/(d_Re*d_Pr)
       ! call tim_lumesh_init(0,0,d1,d2, LD)
-      call tim_lumesh_init(0,0,d1,d2, LD)
+      call tim_lumesh_init(0,1,d1,d2, LD)
 
       			! timestepping matrices for rhs
       d1 =  1d0/tim_dt
@@ -105,31 +106,43 @@
       call tim_meshmult(0,Lt,T_,temp_N, temp_tau) !tim_meshmult(S,A,b,c, d)
 						!  multiply  d = A b + c
 						!  S=0, b even for m even; S=1, b odd for m even
-            call var_coll_meshmult(0,mes_D%dr(1),T_,tgradr)
+            ! call var_coll_meshmult(0,mes_D%dr(1),T_,tgradr)
 
-          if(mpi_rnk==_Np-1) then
-              R_index=mes_D%pN+mes_D%pNi-1
-            print*, temp_tau%Re(R_index,0)
-            print*, temp_N%Re(R_index,0)
-            print*, mes_D%r(R_index,1)
-            print*, R_index
-          end if
-      !call tim_zerobc(temp_tau)
+          ! if(mpi_rnk==_Np-1) then
+          !     R_index=mes_D%pN+mes_D%pNi-1
+          !   print*, temp_tau%Re(R_index,0)
+          !   print*, temp_N%Re(R_index,0)
+          !   print*, mes_D%r(R_index,1)
+          !   print*, R_index
+          ! end if
+      call temp_tempbc(temp_tau)
         				! invert
       call tim_lumesh_invert(0,LD, temp_tau)
-      if(mpi_rnk==_Np-1) then
-          R_index=mes_D%pN+mes_D%pNi-1
-          bc=-tgradr%Re(R_index,0)/2d0/d_Re/d_Pr/d_beta/d_Vs
-        print*, temp_tau%Re(R_index,0)
-        print*, bc
-        print*,''
-      end if
+      ! if(mpi_rnk==_Np-1) then
+      !     R_index=mes_D%pN+mes_D%pNi-1
+      !     bc=-tgradr%Re(R_index,0)/2d0/d_Re/d_Pr/d_beta/d_Vs
+      !   print*, temp_tau%Re(R_index,0)
+      !   print*, bc
+      !   print*,''
+      ! end if
       if(mpi_rnk==0)  &
          temp_tau%Im(:,0) = 0d0
 
    end subroutine temp_step
-
-
+!-------------------------------------------------------------------------
+!  set no-flux condition at r=1
+!-------------------------------------------------------------------------
+   subroutine temp_tempbc(a)
+     type (coll), intent(inout) :: a
+     integer :: n
+     ! TODO: Evaluate B.C. with updated duz/dr at B.C.
+     !temp_p%Re(:,:,R_index)*d_Re*d_Pr*d_beta*d_Vs* &
+      ! (vel_Up_phy%Re(:,:,R_index)-vel_curlt%Re(:,:,R_index))
+     do n = 0, var_H%pH1
+        a%Re(i_N, n ) = 0d0
+        a%Im(i_N, n ) = 0d0
+     end do
+   end subroutine temp_tempbc
 !------------------------------------------------------------------------
 !  predictor with euler nonlinear terms
 !------------------------------------------------------------------------

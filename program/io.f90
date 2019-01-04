@@ -176,7 +176,7 @@
          call io_load_coll(f,'Ur',interp,N_,r,A,1, vel_ur)
          call io_load_coll(f,'Ut',interp,N_,r,A,1, vel_ut)
          call io_load_coll(f,'Uz',interp,N_,r,A,0, vel_uz)
-         call io_load_coll(f,'T', interp,N_,r,A,0, temp_tau)
+!         call io_load_coll(f,'T', interp,N_,r,A,0, temp_tau)
 
          deallocate(r)
 
@@ -571,8 +571,8 @@ end subroutine io_save_spectrum
 
       if(E-Ek0>d_minE3d .or. tim_t<20d0) return
       print*, 'io_write_energy: Relaminarised!'
-      open(99,file='RUNNING')
-      close(99, status='delete')
+      ! open(99,file='RUNNING')
+      ! close(99, status='delete')
 
    end subroutine io_write_energy
 
