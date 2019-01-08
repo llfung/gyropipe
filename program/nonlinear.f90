@@ -64,16 +64,7 @@
    subroutine non_velocity()
       type (phys) :: p1,p2,p3
       double precision :: d
-      ! if (mpi_rnk==0)
-      ! print*, temp_p%Re(0,0,1)
-       ! if (mpi_rnk==0)  d = dot_product(dexp(temp_tau%Re(:,0)),mes_D%intrdr)
-       ! if (mpi_rnk==0)  print*, d, '   ', mpi_rnk
-       d= d_Ri /2d0/ dot_product(dexp(temp_tau%Re(:,0)),mes_D%intrdr)
-      ! if (mpi_rnk==0)  print*, d
-      ! print*, maxval(temp_p%Re)
-      ! print*, maxval(d*dexp(temp_p%Re))
-      ! print*, '  '
-      ! print*, '  '
+       d= d_Ri /2d0/ d_nint
          			! advection  u x curlu
       p1%Re = vel_t%Re*vel_curlz%Re - vel_z%Re*vel_curlt%Re
       p2%Re = vel_z%Re*vel_curlr%Re - vel_r%Re*vel_curlz%Re
@@ -90,7 +81,6 @@
       _loop_km_vars
                   			! force from background HPF and from T
       b = -vel_Up
-!      if(mpi_rnk==0) print*, 'd=',d
       _loop_km_begin
          a = d_alpha*k * vel_U
          vel_Nr%Re(:,nh) = vel_Nr%Re(:,nh) + a*vel_ur%Im(:,nh)
@@ -112,8 +102,6 @@
 
 
       if(mpi_rnk/=0) return
-      				! from background T0
-      !vel_Nz%Re(:,0) = vel_Nz%Re(:,0) + d*temp_T0(:)
 				! zero mode real
       vel_Nr%Im(:,0) = 0d0
       vel_Nt%Im(:,0) = 0d0
@@ -136,14 +124,12 @@
             - vel_z%Re*temp_gradz%Re  &
             - beta*vel_lapz%Re &
             - beta*vel_Up_phy%Re*temp_gradr%Re &
-            + (temp_gradr%Re*temp_gradr%Re+ temp_gradt%Re*temp_gradt%Re+temp_gradz%Re*temp_gradz%Re)/d_Pr/d_Re
-      ! print*, 'max gradr: ',maxval(temp_gradr%Re), mpi_rnk
-      ! print*, 'max gradt: ',maxval(temp_gradt%Re), mpi_rnk
-      ! print*, 'max gradz: ',maxval(temp_gradz%Re), mpi_rnk
+            + (temp_gradr%Re*temp_gradr%Re &
+            + temp_gradt%Re*temp_gradt%Re &
+            +temp_gradz%Re*temp_gradz%Re)/d_Pr/d_Re
       call tra_phys2spec(p, s)
       call var_spec2coll(s, temp_N)
 
-      ! Due to B.C., only compute 1:(i_N-1)
       _loop_km_begin
          a = d_alpha*k * vel_U
 
@@ -156,7 +142,6 @@
       if(mpi_rnk/=0) return
       temp_N%Re(:,0) = temp_N%Re(:,0)-beta*vel_Upp
       temp_N%Im(:,0) = 0d0
-!      temp_N%Re(:,0) = temp_N%Re(:,0) + 4d0/(d_Re*d_Pr)
 
    end subroutine non_temperature
 

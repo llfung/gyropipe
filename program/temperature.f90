@@ -20,6 +20,7 @@
 
   ! double precision :: temp_T0(i_N) !temperature basic state T0 = 1 -r^2
   ! double precision :: temp_T0p(i_N) !temperature gradient basic state dT/dr = -2r
+   double precision ::  d_nint
 
    type (lumesh), private :: LD(0:i_pH1)!lhs matrix
    type (mesh),   private :: Lt(0:i_pH1) !rhs matrix for timestepping
@@ -49,7 +50,7 @@
    subroutine temp_matrices()
       double precision :: d1, d2
       integer :: j,nl,nr,n
-      _loop_km_vars
+      ! _loop_km_vars
 
 			! lhs matrices
       d1 =  1d0/tim_dt
@@ -62,17 +63,17 @@
       call tim_mesh_init(0,d1,d2, Lt)
 
       ! For B.C. at r=R
-      _loop_km_begin
-        do j = 1-i_KL, i_N
-           nl = max(1,j-i_KL)
-           nr = min(j+i_KL,i_N)
-           do n = nl, nr
-              if (n==i_N) then
-                Lt(nh)%M(i_KL+1+n-j,j)=0d0
-              end if
-           end do
-        end do
-      _loop_km_end
+      ! _loop_km_begin
+      !   do j = 1-i_KL, i_N
+      !      nl = max(1,j-i_KL)
+      !      nr = min(j+i_KL,i_N)
+      !      do n = nl, nr
+      !         if (n==i_N) then
+      !           Lt(nh)%M(i_KL+1+n-j,j)=0d0
+      !         end if
+      !      end do
+      !   end do
+      ! _loop_km_end
    end subroutine temp_matrices
 
 
@@ -86,6 +87,14 @@
 
       call tra_coll2phys(temp_tau,temp_p)
 
+#ifdef _MPI
+
+        if(mpi_rnk==0) d_nint = dot_product(dexp(temp_tau%Re(:,0)),mes_D%intrdr)
+        call mpi_bcast(d_nint,1,mpi_double_precision,0,mpi_comm_world,mpi_er)
+
+#else
+      d_nint = dot_product(dexp(temp_tau%Re(:,0)),mes_D%intrdr)
+#endif
    end subroutine temp_transform
 
 
@@ -93,19 +102,14 @@
 !  Advance equations one timestep.
 !------------------------------------------------------------------------
    subroutine temp_step()
-				     	! get rhs = A u_ + N
-       ! print*, 'T Non-linear Re: ', maxval(temp_N%Re), mpi_rnk
-       ! print*, 'T Non-linear Im: ', maxval(temp_N%Im), mpi_rnk
+				    ! get rhs = A u_ + N
       call tim_meshmult(0,Lt,T_,temp_N, temp_tau) !tim_meshmult(S,A,b,c, d)
 						!  multiply  d = A b + c
 						!  S=0, b even for m even; S=1, b odd for m even
-
-       ! print*, 'Before B.C. : ', maxval(temp_tau%Re), mpi_rnk
       call temp_tempbc(temp_tau)
-        				! invert
-       ! print*, 'Before: ', maxval(temp_tau%Re), mpi_rnk
+        		! invert
       call tim_lumesh_invert(0,LD, temp_tau)
-       ! print*, 'After: ', maxval(temp_tau%Re), mpi_rnk
+
       if(mpi_rnk==0)  &
          temp_tau%Im(:,0) = 0d0
 

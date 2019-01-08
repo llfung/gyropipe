@@ -14,32 +14,32 @@
    implicit none
    save
 
-   integer,	         parameter :: i_N           = 160
-   integer,          parameter :: i_K           = 12
-   integer,          parameter :: i_M           = 12
+   integer,	         parameter :: i_N           = 60
+   integer,          parameter :: i_K           = 18
+   integer,          parameter :: i_M           = 32
    integer,          parameter :: i_Mp          = 1
 
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
    double precision            :: d_Re          = 2d0
-   double precision            :: d_Pr          = 25.19526329d0
-   double precision            :: d_Ri          = 0.8232d0
-   double precision            :: d_Vs          = 0.0126d0
-   double precision            :: d_beta        = 1.025d-1
+   double precision            :: d_Pr          = 50.39052658d0
+   double precision            :: d_Ri          = 0.2058d0
+   double precision            :: d_Vs          = 0.063d0
+   double precision            :: d_beta        = 1.7d0
    double precision            :: d_alpha       = 1.25d0
-   logical,          parameter :: b_const_flux  = .false.
+   logical,          parameter :: b_const_flux  = .true.
    logical,          parameter :: b_mirrorsym   = .false.
    logical,          parameter :: b_shiftrefl   = .false.
    logical,          parameter :: b_shiftrott   = .false.
    double precision, parameter :: d_minE3d      = 1d-5
 
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
-   integer,          parameter :: i_save_rate1  = 5000!100
-   integer,          parameter :: i_save_rate2  = 1000
-   integer,          parameter :: i_maxtstep    = 1000000
+   integer,          parameter :: i_save_rate1  = 100!100
+   integer,          parameter :: i_save_rate2  = 200
+   integer,          parameter :: i_maxtstep    = 10000
    double precision, parameter :: d_maxt        = -1d0
    double precision, parameter :: d_cpuhours    = 1d99 !90d0
    double precision, parameter :: d_time        = 0d0 !-1d0
-   double precision, parameter :: d_timestep    = 0.0005d0 !-1d0
+   double precision, parameter :: d_timestep    = 0.05d0 !-1d0
    double precision, parameter :: d_maxdt       = 0.2d0 !1d99
    double precision, parameter :: d_dterr       = 1d-5 !1d99
    double precision, parameter :: d_courant     = 0.5d0
