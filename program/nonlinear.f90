@@ -11,7 +11,7 @@
    implicit none
    save
 
-   type (phys), private :: p
+   type (phys), private :: p,p1,p2,p3
    type (spec), private :: s
 
  contains
@@ -114,19 +114,27 @@
 !  nonlinear terms for the tempertaure
 !-------------------------------------------------------------------------
    subroutine non_temperature()
-      double precision :: a(i_N), c, beta
+      double precision :: a(i_N), c, beta, Pe
       _loop_km_vars
-
+      Pe=d_Pr*d_Re
       beta=d_beta*d_Vs
 				! advection temperature, -u.grad(tau)
-      p%Re = -(vel_r%Re-beta*vel_curlt%Re)*temp_gradr%Re  &
-            - (vel_t%Re+beta*vel_curlr%Re)*temp_gradt%Re  &
-            - vel_z%Re*temp_gradz%Re  &
-            - beta*vel_lapz%Re &
-            - beta*vel_Up_phy%Re*temp_gradr%Re &
-            + (temp_gradr%Re*temp_gradr%Re &
-            + temp_gradt%Re*temp_gradt%Re &
-            +temp_gradz%Re*temp_gradz%Re)/d_Pr/d_Re
+      ! p%Re = -(vel_r%Re-beta*vel_curlt%Re)*temp_gradr%Re  &
+      !       - (vel_t%Re+beta*vel_curlr%Re)*temp_gradt%Re  &
+      !       - vel_z%Re*temp_gradz%Re  &
+      !       - beta*vel_lapz%Re &
+      !       - beta*vel_Up_phy%Re*temp_gradr%Re &
+      !       + (temp_gradr%Re*temp_gradr%Re &
+      !       + temp_gradt%Re*temp_gradt%Re &
+      !       +temp_gradz%Re*temp_gradz%Re)/Pe
+      p1%Re=-(vel_r%Re+beta*(vel_Up_phy%Re-vel_curlt%Re)-temp_gradr%Re/Pe)
+      p2%Re=-(vel_t%Re+beta*vel_curlr%Re-temp_gradt%Re/Pe)
+      p3%Re=-(vel_z%Re-temp_gradz%Re/Pe)
+
+      p%Re =   p1%Re*temp_gradr%Re  &
+             + p2%Re*temp_gradt%Re  &
+             + p3%Re*temp_gradz%Re  &
+             - beta*vel_lapz%Re
       call tra_phys2spec(p, s)
       call var_spec2coll(s, temp_N)
 
@@ -144,7 +152,58 @@
       temp_N%Im(:,0) = 0d0
 
    end subroutine non_temperature
+   !------------------------------------------------------------------------
+   !  get cfl max dt due to flow field
+   !------------------------------------------------------------------------
+      subroutine non_maxtstep()
+         double precision :: d,mx, dt(6),dt_(6), r(i_N)
+         integer :: n, n__
 
+         r = mes_D%r(:,1)
+         dt = 1d99
+
+         do n = 1, mes_D%pN
+            n__ = n+mes_D%pNi-1
+
+            if(n__==1) then
+               d = r(2) - r(1)
+            else if(n__==i_N) then
+               d = r(i_N) - r(i_N-1)
+            else
+               d = min( r(n__)-r(n__-1), r(n__+1)-r(n__) )
+            end if
+            mx = maxval( dabs(vel_r%Re(:,:,n)) )
+            if(mx/=0d0) dt(1) = min( dt(1), d/mx )
+            mx = maxval( dabs(p1%Re(:,:,n)) )
+            if(mx/=0d0) dt(4) = min( dt(4), d/mx )
+
+            d = 2d0*d_PI/dble(i_Th*i_Mp) 		!---  *r_(n)? ---
+            mx = maxval( dabs(vel_t%Re(:,:,n)) )
+            if(mx/=0d0) dt(2) = min( dt(2), d/mx )
+            mx = maxval( dabs(p2%Re(:,:,n)) )
+            if(mx/=0d0) dt(5) = min( dt(5), d/mx )
+
+            d = 2d0*d_PI/(d_alpha*i_Z)
+            mx = maxval( dabs(vel_z%Re(:,:,n) + vel_U(n__)) )
+            if(mx/=0d0) dt(3) = min( dt(3), d/mx )
+            mx = maxval( dabs(p3%Re(:,:,n) + vel_U(n__)) )
+            if(mx/=0d0) dt(6) = min( dt(6), d/mx )
+         end do
+
+#ifdef _MPI
+         call mpi_allreduce(dt, dt_, 6, mpi_double_precision,  &
+            mpi_min, mpi_comm_world, mpi_er)
+         dt = dt_
+#endif
+         tim_cfl_dt = minval(dt)
+         if(tim_cfl_dt==dt(1)) tim_cfl_dir=1
+         if(tim_cfl_dt==dt(2)) tim_cfl_dir=2
+         if(tim_cfl_dt==dt(3)) tim_cfl_dir=3
+         if(tim_cfl_dt==dt(4)) tim_cfl_dir=4
+         if(tim_cfl_dt==dt(5)) tim_cfl_dir=5
+         if(tim_cfl_dt==dt(6)) tim_cfl_dir=6
+
+      end subroutine non_maxtstep
 !*************************************************************************
  end module nonlinear
 !*************************************************************************

@@ -313,10 +313,10 @@
       call tra_coll2phys(c1,vel_curlr, c2,vel_curlt, c3,vel_curlz)
 
       call var_coll_curl(c1,c2,c3, dd1,dd2,dd3)
-      call var_coll_neg_loc(dd1)
-      call var_coll_neg_loc(dd2)
+      ! call var_coll_neg_loc(dd1)
+      ! call var_coll_neg_loc(dd2)
       call var_coll_neg_loc(dd3)
-      call tra_coll2phys(dd1,vel_lapr, dd2,vel_lapt, dd3,vel_lapz)
+      call tra_coll2phys(dd3,vel_lapz)
 
    end subroutine vel_transform
 
@@ -447,46 +447,46 @@
 !------------------------------------------------------------------------
 !  get cfl max dt due to flow field
 !------------------------------------------------------------------------
-   subroutine vel_maxtstep()
-      double precision :: d,mx, dt(3),dt_(3), r(i_N)
-      integer :: n, n__
-
-      r = mes_D%r(:,1)
-      dt = 1d99
-
-      do n = 1, mes_D%pN
-         n__ = n+mes_D%pNi-1
-
-         if(n__==1) then
-            d = r(2) - r(1)
-         else if(n__==i_N) then
-            d = r(i_N) - r(i_N-1)
-         else
-            d = min( r(n__)-r(n__-1), r(n__+1)-r(n__) )
-         end if
-         mx = maxval( dabs(vel_r%Re(:,:,n)) )
-         if(mx/=0d0) dt(1) = min( dt(1), d/mx )
-
-         d = 2d0*d_PI/dble(i_Th*i_Mp) 		!---  *r_(n)? ---
-         mx = maxval( dabs(vel_t%Re(:,:,n)) )
-         if(mx/=0d0) dt(2) = min( dt(2), d/mx )
-
-         d = 2d0*d_PI/(d_alpha*i_Z)
-         mx = maxval( dabs(vel_z%Re(:,:,n) + vel_U(n__)) )
-         if(mx/=0d0) dt(3) = min( dt(3), d/mx )
-      end do
-
-#ifdef _MPI
-      call mpi_allreduce(dt, dt_, 3, mpi_double_precision,  &
-         mpi_min, mpi_comm_world, mpi_er)
-      dt = dt_
-#endif
-      tim_cfl_dt = minval(dt)
-      if(tim_cfl_dt==dt(1)) tim_cfl_dir=1
-      if(tim_cfl_dt==dt(2)) tim_cfl_dir=2
-      if(tim_cfl_dt==dt(3)) tim_cfl_dir=3
-
-   end subroutine vel_maxtstep
+!    subroutine vel_maxtstep()
+!       double precision :: d,mx, dt(3),dt_(3), r(i_N)
+!       integer :: n, n__
+!
+!       r = mes_D%r(:,1)
+!       dt = 1d99
+!
+!       do n = 1, mes_D%pN
+!          n__ = n+mes_D%pNi-1
+!
+!          if(n__==1) then
+!             d = r(2) - r(1)
+!          else if(n__==i_N) then
+!             d = r(i_N) - r(i_N-1)
+!          else
+!             d = min( r(n__)-r(n__-1), r(n__+1)-r(n__) )
+!          end if
+!          mx = maxval( dabs(vel_r%Re(:,:,n)) )
+!          if(mx/=0d0) dt(1) = min( dt(1), d/mx )
+!
+!          d = 2d0*d_PI/dble(i_Th*i_Mp) 		!---  *r_(n)? ---
+!          mx = maxval( dabs(vel_t%Re(:,:,n)) )
+!          if(mx/=0d0) dt(2) = min( dt(2), d/mx )
+!
+!          d = 2d0*d_PI/(d_alpha*i_Z)
+!          mx = maxval( dabs(vel_z%Re(:,:,n) + vel_U(n__)) )
+!          if(mx/=0d0) dt(3) = min( dt(3), d/mx )
+!       end do
+!
+! #ifdef _MPI
+!       call mpi_allreduce(dt, dt_, 3, mpi_double_precision,  &
+!          mpi_min, mpi_comm_world, mpi_er)
+!       dt = dt_
+! #endif
+!       tim_cfl_dt = minval(dt)
+!       if(tim_cfl_dt==dt(1)) tim_cfl_dir=1
+!       if(tim_cfl_dt==dt(2)) tim_cfl_dir=2
+!       if(tim_cfl_dt==dt(3)) tim_cfl_dir=3
+!
+!    end subroutine vel_maxtstep
 
 
 !*************************************************************************

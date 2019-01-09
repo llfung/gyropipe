@@ -89,15 +89,20 @@
          dr = dabs(mes_D%r(i_N,1)-1d0)
          if(dr>1d-8) stop 'mes_precompute: mesh.in err 3'
 
-      else ! default mesh
-         N_ = i_N+int(dsqrt(dble(i_N)))
-         do n = N_-i_N+1, N_
-            mes_D%r(n-N_+i_N,1) = 0.5d0*( 1d0+dcos(d_PI*(N_-n)/dble(N_)) )
+      else
+        ! Linearly shifted Chebyshev Cos Mesh
+         do n = 1, i_N
+            mes_D%r(n,1) = 0.5d0*( 1d0+dcos(d_PI*(i_N-n)/dble(i_N)) )
          end do
-         do n = 1, 10
-            dr = 1.5d0*mes_D%r(1,1)-0.5d0*mes_D%r(2,1)
-            mes_D%r(:,1) = mes_D%r(:,1)*(1d0+dr) - dr
-         end do
+        ! Original default mesh
+        !  N_ = i_N+int(dsqrt(dble(i_N)))
+        !  do n = N_-i_N+1, N_
+        !     mes_D%r(n-N_+i_N,1) = 0.5d0*( 1d0+dcos(d_PI*(N_-n)/dble(N_)) )
+        !  end do
+        !  do n = 1, 10
+        !     dr = 1.5d0*mes_D%r(1,1)-0.5d0*mes_D%r(2,1)
+        !     mes_D%r(:,1) = mes_D%r(:,1)*(1d0+dr) - dr
+        !  end do
       end if
 
       call mes_rdom_init(mes_D)

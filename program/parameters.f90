@@ -20,11 +20,11 @@
    integer,          parameter :: i_Mp          = 1
 
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
-   double precision            :: d_Re          = 2d0
+   double precision            :: d_Re          = 0.240642274d0
    double precision            :: d_Pr          = 50.39052658d0
-   double precision            :: d_Ri          = 0.2058d0
-   double precision            :: d_Vs          = 0.063d0
-   double precision            :: d_beta        = 1.7d0
+   double precision            :: d_Ri          = 13.381607173d0
+   double precision            :: d_Vs          = 0.523598776d0
+   double precision            :: d_beta        = 0.204545933d0
    double precision            :: d_alpha       = 1.25d0
    logical,          parameter :: b_const_flux  = .true.
    logical,          parameter :: b_mirrorsym   = .false.
@@ -34,16 +34,17 @@
 
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
    integer,          parameter :: i_save_rate1  = 100!100
-   integer,          parameter :: i_save_rate2  = 200
+   integer,          parameter :: i_save_rate2  = 100
    integer,          parameter :: i_maxtstep    = 10000
    double precision, parameter :: d_maxt        = -1d0
    double precision, parameter :: d_cpuhours    = 1d99 !90d0
    double precision, parameter :: d_time        = 0d0 !-1d0
-   double precision, parameter :: d_timestep    = 0.05d0 !-1d0
-   double precision, parameter :: d_maxdt       = 0.2d0 !1d99
+   double precision, parameter :: d_timestep    = -1d0 !0.05d0
+   double precision, parameter :: d_maxdt       = 5d0 !1d99
    double precision, parameter :: d_dterr       = 1d-5 !1d99
-   double precision, parameter :: d_courant     = 0.5d0
+   double precision, parameter :: d_courant     = 0.3d0
    double precision, parameter :: d_implicit    = 0.51d0
+   integer,          parameter :: d_dterr_transient_iter = 6
 
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
    integer,          parameter :: i_KL  = 4

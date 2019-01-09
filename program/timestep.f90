@@ -36,7 +36,7 @@
       tim_cfl_dt  = 0d0
       tim_cfl_dir = 0
       tim_new_dt  = .false.
-      tim_pcn     = 1!-1 for corrector iteration on, 1 for off.
+      tim_pcn     = -1!-1 for corrector iteration on, 1 for off.
    end subroutine tim_precompute
 
 
@@ -284,11 +284,11 @@
             if(d_timestep> 0d0) print*,' step=',tim_step
             if(d_timestep<=0d0) print*,' step=',tim_step,' dt=',real(tim_dt)
          end if
-      else if(tim_it>10) then
+      else if(tim_it>20) then
          if(mpi_rnk==0) print*, 'tim_check_cgce: too many its!!!'
          tim_step = i_maxtstep-1                                    ! Exit the run
          tim_it = 0
-      else if(tim_dterr>lasterr) then
+      else if(tim_dterr>lasterr .and. tim_it>d_dterr_transient_iter) then
          if(mpi_rnk==0) print*, 'tim_check_cgce: increasing error!!!'
          if(tim_dterr>2d0*d_dterr) tim_step = i_maxtstep-1          ! Exit the run
          if(tim_dterr<2d0*d_dterr) tim_corr_dt = tim_dt/(1d1*d_courant)   ! Next time step limit: current step but replaced courant with forced courant=0.1
@@ -297,6 +297,7 @@
          lasterr = tim_dterr
          tim_it = tim_it + 1
       else
+              ! if (mpi_rnk==0) print*, tim_it
          if(mpi_rnk==0 .and. modulo(tim_step,i_save_rate2)==0) then
             if(d_timestep> 0d0) print*,' step=',tim_step,' its=',tim_it
             if(d_timestep<=0d0) print*,' step=',tim_step,' dt=',real(tim_dt)
@@ -327,7 +328,7 @@
               .or.  (dt>tim_dt*1.10d0 .and. i<0)  &
               .or.  (dt==d_maxdt .and. tim_dt<dt .and. i<0) )
       if(tim_new_dt) then
-         if(dt>=tim_dt)  i = 99
+         if(dt>=tim_dt)  i=3 !i = 99
          tim_dt = dt
       end if
 

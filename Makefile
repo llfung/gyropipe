@@ -92,7 +92,7 @@ clean :
 	rm -f *.o *.mod *.d *.il core *.out *.optrpt
 
 #------------------------------------------------------------------------
-io.o : $(PROGDIR)io.f90 temperature.o velocity.o
+io.o : $(PROGDIR)io.f90 temperature.o velocity.o nonlinear.o
 	$(COMPILER) $(COMPFLAGS) $(PROGDIR)io.f90
 
 meshs.o : $(PROGDIR)meshs.f90 parameters.o mpi.o

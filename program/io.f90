@@ -7,6 +7,7 @@
 !**************************************************************************
    use velocity
    use temperature
+   use nonlinear
    use netcdf
    implicit none
    save
@@ -69,8 +70,8 @@
 
       if(modulo(tim_step,i_save_rate1)==0) then
          call io_save_state()
-         call io_save_spectrum(1)
-         call io_save_spectrum(2)
+         ! call io_save_spectrum(1)
+         ! call io_save_spectrum(2)
          call io_save_meanprof()
          io_save1 = io_save1+1
       endif
@@ -322,7 +323,7 @@
       character(4) :: cnum
       integer :: e, f
       integer :: rd, Hd, ReImd, dims(3)
-      integer :: r,dt,dtcor,dtcfl, Ur,Ut,Uz, T
+      integer :: r,dt,dtcor,dtcfl, Ur,Ut,Uz, T, nint
 
       write(cnum,'(I4.4)') io_save1
 
@@ -346,6 +347,7 @@
          e=nf90_def_var(f, 'dt',    nf90_double, dt)
          e=nf90_def_var(f, 'dtcor', nf90_double, dtcor)
          e=nf90_def_var(f, 'dtcfl', nf90_double, dtcfl)
+         e=nf90_def_var(f, 'nint', nf90_double, nint)
 
          dims = (/rd,Hd,ReImd/)
          call io_define_coll(f, 'Ur', dims, Ur)
@@ -359,6 +361,8 @@
          e=nf90_put_var(f, dt, tim_dt)
          e=nf90_put_var(f, dtcor, tim_corr_dt)
          e=nf90_put_var(f, dtcfl, tim_cfl_dt)
+         d_nint = dot_product(dexp(temp_tau%Re(:,0)),mes_D%intrdr)
+         e=nf90_put_var(f, nint, d_nint)
       end if
 
       call io_save_coll(f,Ur, vel_ur)
@@ -699,7 +703,7 @@ end subroutine io_save_spectrum
          write(io_dt,11) tim_t, tim_step,  &
             tim_dt, tim_corr_dt, tim_cfl_dt, tim_cfl_dir
       else
-         call vel_maxtstep()
+         call non_maxtstep()
          if(mpi_rnk/=0) return
          write(io_dt,10) tim_t, tim_corr_dt, tim_cfl_dt, tim_cfl_dir
       end if

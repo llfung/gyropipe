@@ -24,7 +24,7 @@
       call non_temperature()
       call var_null(2)          ! where you put util()
       if(d_timestep<0d0) then
-         call vel_maxtstep()    ! Automated timestep size calculation->tim_cfl_dt
+         call non_maxtstep()    ! Automated timestep size calculation->tim_cfl_dt
          call tim_new_tstep()   ! Other conditions that limits the timestep size
          if(tim_new_dt)  &      ! If we have used a new timestpe compared to the last one
             call vel_matrices() !    precomputation of matrices for timestepping
