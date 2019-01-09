@@ -61,7 +61,7 @@
       vel_Upp = - 4d0
 
       call var_coll_init(vel_Up_col)
-      vel_Up_col%Re(:,0)=- 2d0*mes_D%r(:,1)
+      if (mpi_rnk==0) vel_Up_col%Re(:,0)=- 2d0*mes_D%r(:,1)
 
       call tra_coll2phys(vel_Up_col, vel_Up_phy)
 
