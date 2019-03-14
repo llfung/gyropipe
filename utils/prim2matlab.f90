@@ -40,10 +40,13 @@
       _loop_km_vars
 
       vel_uz%Re(:,0) = vel_uz%Re(:,0) + vel_U
+      temp_tau%Re(:,0) = temp_tau%Re(:,0) + temp_T0
       if(submean==1) then
          vel_uz%Re(:,0) = vel_uz%Re(:,0) - vel_U
+         temp_tau%Re(:,0) = temp_tau%Re(:,0) - temp_T0
       else if(submean==2) then
          vel_uz%Re(:,0) = 0d0
+         temp_tau%Re(:,0) = 0d0
       else if(submean==3) then
          vel_uz%Re(:,0) = vel_uz%Re(:,0) - velprof
       end if
@@ -65,6 +68,7 @@
          call var_coll_shift(toffset,d,vel_ur, vel_ur)
          call var_coll_shift(toffset,d,vel_ut, vel_ut)
          call var_coll_shift(toffset,d,vel_uz, vel_uz)
+         call var_coll_shift(toffset,d,temp_tau, temp_tau)
       end if
 
 
@@ -151,9 +155,13 @@
                   pr%Re(k,m,n) = E_(2)               
                end do
             end do
-         end do      
+         end do     
 
-      end if   
+      else if(var==9) then  
+         call tra_coll2phys(temp_tau, pr)  
+
+      end if  
+
 
             
    end subroutine dx_preparedata
@@ -342,15 +350,29 @@
          minA(n) = min(minA(n),minA_(n))
       end do
 
-      if(fls==2) then
-         print*, 'saving mat_vec'//cnum//'.cdf ...'
-         e=nf90_create('mat_vec'//cnum//'.cdf', nf90_clobber, f)
+      if(var==9) then 
+         if(fls==2) then
+            print*, 'saving mat_temp'//cnum//'.cdf ...'
+            e=nf90_create('mat_temp'//cnum//'.cdf', nf90_clobber, f)
+         else
+            print*, 'saving mat_temp.cdf ... ' 
+            e=nf90_create('mat_temp.cdf', nf90_clobber, f)
+         end if
       else
-         print*, 'saving mat_vec.cdf ... ' 
-         e=nf90_create('mat_vec.cdf', nf90_clobber, f)
+         if(fls==2) then
+            print*, 'saving mat_vec'//cnum//'.cdf ...'
+            e=nf90_create('mat_vec'//cnum//'.cdf', nf90_clobber, f)
+         else
+            print*, 'saving mat_vec.cdf ... ' 
+            e=nf90_create('mat_vec.cdf', nf90_clobber, f)
+         end if
       end if
-   
-      e=nf90_def_dim(f,'xd',mat_nx,  xd)	! position dimensions
+
+  
+      e=nf90_put_att(f, nf90_global, 't', tim_t)
+      e=nf90_put_att(f, nf90_global, 'Re', d_Re)
+      e=nf90_put_att(f, nf90_global, 'alpha', d_alpha)
+      e=nf90_def_dim(f,'xd',mat_nx,  xd) ! position dimensions
       e=nf90_def_dim(f,'yd',mat_ny,  yd)
       e=nf90_def_dim(f,'zd',mat_nz,  zd)
       e=nf90_def_dim(f,'Ad',mat_Ads, Ad)
@@ -425,12 +447,13 @@
    print*, ' 6, P2 - h  -->  P2^'
    print*, ' 7, pressure'
    print*, ' 8, lambda_2 -- vortex'
+   print*, ' 9, temperature'
 
    read(*,*) var
 
    print*, 'Substract mean profile?'
    print*, ' 0, use total flow;  1, sub HPf;  2, set 00mode to zero;'   
-   print*, ' 3, sub from meanprof file.'
+   print*, ' 3, sub from meanprof file (not implemented for temperature!).'
    read(*,*) submean
    if(submean==3) then
       print*, 'Enter filename (must have no header and same i_N):'
@@ -539,7 +562,7 @@
       dtprev = tim_dt
       call io_load_state()
       print*, 'processing...'
-      print*, ' fl = ', fl
+      write(*,'(a5, i4.4, a5, es16.8)') 'fl = ', fl, ' t = ', tim_t
       
       call dx_preparedata()
          

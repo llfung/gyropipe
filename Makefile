@@ -35,7 +35,7 @@ COMPFLAGS	= -ffree-line-length-none -x f95-cpp-input -c -O3 \
                   #-C #-pg
 LIBS		= \
 		  -L/usr/lib \
-		  cheby.o -lfftw3 -llapack -lnetcdff \
+		  -lfftw3 -llapack -lnetcdff \
 		  # -lblas -lcurl
 endif
 
@@ -64,12 +64,12 @@ run :
 	cp state.cdf.in $(INSTDIR)
 	mv $(INSTDIR) $(RUNDIR)
 ifeq (${numcore},1)
-	(cd $(RUNDIR); nohup $(RUNDIR)/main.out > $(RUNDIR)/OUT 2> $(RUNDIR)/OUT.err &)
+	(cd $(RUNDIR); nohup $(RUNDIR)/main.out > $(RUNDIR)/OUT.log 2> $(RUNDIR)/OUT.err &)
 else
 ifeq (${FC},ifort)
-	nohup mpirun -n ${numcore} -gwdir $(RUNDIR) ${RUNDIR}/main.out > ${RUNDIR}/OUT 2> ${RUNDIR}/OUT.err &)
+	nohup mpirun -n ${numcore} -gwdir $(RUNDIR) ${RUNDIR}/main.out > ${RUNDIR}/OUT.log 2> ${RUNDIR}/OUT.err &)
 else
-	nohup mpirun -np ${numcore} -wd $(RUNDIR) $(RUNDIR)/main.out > $(RUNDIR)/OUT 2> $(RUNDIR)/OUT.err &
+	nohup mpirun -np ${numcore} -wd $(RUNDIR) $(RUNDIR)/main.out > $(RUNDIR)/OUT.log 2> $(RUNDIR)/OUT.err &
 endif
 endif
 
@@ -96,7 +96,7 @@ io.o : $(PROGDIR)io.f90 temperature.o velocity.o nonlinear.o
 	$(COMPILER) $(COMPFLAGS) $(PROGDIR)io.f90
 
 meshs.o : $(PROGDIR)meshs.f90 parameters.o mpi.o
-	$(COMPILER) $(COMPFLAGS) $(PROGDIR)cheby.f
+#	$(COMPILER) $(COMPFLAGS) $(PROGDIR)cheby.f
 	$(COMPILER) $(COMPFLAGS) $(PROGDIR)meshs.f90
 
 mpi.o : $(PROGDIR)mpi.f90 parallel.h

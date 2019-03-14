@@ -17,6 +17,15 @@
    type (phys) :: vel_curlr
    type (phys) :: vel_curlt
    type (phys) :: vel_curlz
+   type (phys) :: vel_Grr
+   type (phys) :: vel_Grt
+   type (phys) :: vel_Grz
+   type (phys) :: vel_Gtr
+   type (phys) :: vel_Gtt
+   type (phys) :: vel_Gtz
+   type (phys) :: vel_Gzr
+   type (phys) :: vel_Gzt
+   type (phys) :: vel_Gzz
    type (phys) :: vel_lapr
    type (phys) :: vel_lapt
    type (phys) :: vel_lapz
@@ -303,7 +312,7 @@
 
 
 !------------------------------------------------------------------------
-!  Evaluate in physical space  u  and  curl(u)
+!  Evaluate in physical space  u  and  curl(u) and G
 !------------------------------------------------------------------------
    subroutine vel_transform()
 
@@ -317,7 +326,13 @@
       ! call var_coll_neg_loc(dd2)
       call var_coll_neg_loc(dd3)
       call tra_coll2phys(dd3,vel_lapz)
-
+      ! Computing Gradient G for GTD
+      call var_coll_grad(vel_ur,c1,c2,c3)
+      call tra_coll2phys(c1,vel_Grr, c2,vel_Gtr, c3,vel_Gzr)
+      call var_coll_grad(vel_ut,c1,c2,c3)
+      call tra_coll2phys(c1,vel_Grt, c2,vel_Gtt, c3,vel_Gzt)
+      call var_coll_grad(vel_uz,c1,c2,c3)
+      call tra_coll2phys(c1,vel_Grz, c2,vel_Gtz, c3,vel_Gzz)
    end subroutine vel_transform
 
 

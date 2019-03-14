@@ -453,7 +453,7 @@
    end subroutine var_coll_curl
 
 !------------------------------------------------------------------------
-!  take the curl of a vector
+!  take the Laplacian of a vector
 !------------------------------------------------------------------------
     subroutine var_coll_lap(r,t,z, or,ot,oz)
        type (coll), intent(in)  :: r,t,z
