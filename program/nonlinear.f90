@@ -64,11 +64,11 @@
    subroutine non_velocity()
       type (phys) :: p11,p22,p33
       double precision :: d
-       d= d_Ri /2d0/ d_nint
+       d= 1d0 /2d0/ d_nint
          			! advection  u x curlu
       p11%Re = vel_t%Re*vel_curlz%Re - vel_z%Re*vel_curlt%Re
       p22%Re = vel_z%Re*vel_curlr%Re - vel_r%Re*vel_curlz%Re
-      p33%Re = vel_r%Re*vel_curlt%Re - vel_t%Re*vel_curlr%Re +d*dexp(temp_p%Re)
+      p33%Re = vel_r%Re*vel_curlt%Re - vel_t%Re*vel_curlr%Re +d_Ri*(d*dexp(temp_p%Re)-1d0)
       call tra_phys2coll(p11,vel_Nr, p22,vel_Nt, p33,vel_Nz)
 
       call non_addHPF()

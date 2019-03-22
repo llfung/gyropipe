@@ -43,7 +43,10 @@
       double precision     :: Re(0:i_pZ-1, 0:i_Th-1, i_pN)
    end type phys
 
-
+   type phys_cmp
+      double complex     :: CMP(0:i_pZ-1, 0:i_Th-1, i_pN)
+   end type phys_cmp
+   
    type (harm)               :: var_H
    type (coll),      private :: c1,c2,c3
    double precision, private :: ad_k2a2(-i_K1:i_K1)

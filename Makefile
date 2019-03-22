@@ -35,7 +35,7 @@ COMPFLAGS	= -ffree-line-length-none -x f95-cpp-input -c -O3 \
                   #-C #-pg
 LIBS		= \
 		  -L/usr/lib \
-		  -lfftw3 -llapack -lnetcdff \
+		  cheby.o -lfftw3 -llapack -lnetcdff \
 		  # -lblas -lcurl
 endif
 
@@ -96,7 +96,7 @@ io.o : $(PROGDIR)io.f90 temperature.o velocity.o nonlinear.o
 	$(COMPILER) $(COMPFLAGS) $(PROGDIR)io.f90
 
 meshs.o : $(PROGDIR)meshs.f90 parameters.o mpi.o
-#	$(COMPILER) $(COMPFLAGS) $(PROGDIR)cheby.f
+	$(COMPILER) $(COMPFLAGS) $(PROGDIR)cheby.f
 	$(COMPILER) $(COMPFLAGS) $(PROGDIR)meshs.f90
 
 mpi.o : $(PROGDIR)mpi.f90 parallel.h

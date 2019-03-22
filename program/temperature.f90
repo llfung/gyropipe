@@ -108,6 +108,7 @@
 						!  S=0, b even for m even; S=1, b odd for m even
       call temp_tempbc(temp_tau)
         		! invert
+            ! Modify LD to BC need (LD=LD_original*Drr+Drt*im+Drz*ialpha)
       call tim_lumesh_invert(0,LD, temp_tau)
 
       if(mpi_rnk==0)  &
