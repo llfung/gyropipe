@@ -131,15 +131,15 @@
             if(mpi_rnk==0 .and. dabs(d_Ri-d)>1d-8)  &
                print*,' Ri   :',d,' --> ', d_Ri
          end if
-         e=nf90_get_att(f,nf90_global,'Pr', d)
+         e=nf90_get_att(f,nf90_global,'Pe', d)
          if(e==nf90_noerr) then                 !if no errors occurred
-            if(mpi_rnk==0 .and. dabs(d_Pr-d)>1d-8)  &
-               print*,' Pr   :',d,' --> ', d_Pr
+            if(mpi_rnk==0 .and. dabs(d_Pe-d)>1d-8)  &
+               print*,' Pe   :',d,' --> ', d_Pe
          end if
-         e=nf90_get_att(f,nf90_global,'beta', d)
+         e=nf90_get_att(f,nf90_global,'dr', d)
          if(e==nf90_noerr) then                 !if no errors occurred
-            if(mpi_rnk==0 .and. dabs(d_beta-d)>1d-8)  &
-               print*,' beta   :',d,' --> ', d_beta
+            if(mpi_rnk==0 .and. dabs(d_dr-d)>1d-8)  &
+               print*,' dr   :',d,' --> ', d_dr
          end if
          e=nf90_get_att(f,nf90_global,'Vs', d)
          if(e==nf90_noerr) then                 !if no errors occurred
@@ -334,9 +334,9 @@
          e=nf90_put_att(f, nf90_global, 't', tim_t)
          e=nf90_put_att(f, nf90_global, 'Re', d_Re)
          e=nf90_put_att(f, nf90_global, 'Ri', d_Ri)
-         e=nf90_put_att(f, nf90_global, 'beta', d_beta)
+         e=nf90_put_att(f, nf90_global, 'dr', d_dr)
          e=nf90_put_att(f, nf90_global, 'Vs', d_Vs)
-         e=nf90_put_att(f, nf90_global, 'Pr', d_Pr)
+         e=nf90_put_att(f, nf90_global, 'Pe', d_Pe)
          e=nf90_put_att(f, nf90_global, 'alpha', d_alpha)
 
          e=nf90_def_dim(f, 'r', i_N, rd)

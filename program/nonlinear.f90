@@ -8,12 +8,14 @@
    use velocity
    use temperature
    use transform
+   use GTD
    implicit none
    save
 
    type (phys), private :: p,p1,p2,p3
    type (spec), private :: s
 
+   type (phys), private :: DT_gradHr,DT_gradHt,DT_gradHz
  contains
 
 
@@ -116,44 +118,71 @@
    subroutine non_temperature()
       double precision :: a(i_N), c, beta, Pe
       _loop_km_vars
-      Pe=d_Pr*d_Re
-      beta=d_beta*d_Vs
-				! advection temperature, -u.grad(tau)
-      ! p%Re = -(vel_r%Re-beta*vel_curlt%Re)*temp_gradr%Re  &
-      !       - (vel_t%Re+beta*vel_curlr%Re)*temp_gradt%Re  &
-      !       - vel_z%Re*temp_gradz%Re  &
-      !       - beta*vel_lapz%Re &
-      !       - beta*vel_Up_phy%Re*temp_gradr%Re &
-      !       + (temp_gradr%Re*temp_gradr%Re &
-      !       + temp_gradt%Re*temp_gradt%Re &
-      !       +temp_gradz%Re*temp_gradz%Re)/Pe
-      p1%Re=-(vel_r%Re+beta*(vel_Up_phy%Re-vel_curlt%Re)-temp_gradr%Re/Pe)
-      p2%Re=-(vel_t%Re+beta*vel_curlr%Re-temp_gradt%Re/Pe)
-      p3%Re=-(vel_z%Re-temp_gradz%Re/Pe)
+      beta=d_Vs
+
+      DT_gradHr%Re=(GTD_Drr%Re*temp_gradr%Re+GTD_Drt%Re*temp_gradt%Re+GTD_Drz%Re*temp_gradz%Re)
+      DT_gradHt%Re=(GTD_Drt%Re*temp_gradr%Re+GTD_Dtt%Re*temp_gradt%Re+GTD_Dtz%Re*temp_gradz%Re)
+      DT_gradHz%Re=(GTD_Drz%Re*temp_gradr%Re+GTD_Dtz%Re*temp_gradt%Re+GTD_Dzz%Re*temp_gradz%Re)
+       ! advection temperature, -u.grad(tau)
+      p1%Re=-vel_r%Re-GTD_er%Re*d_Vs+DT_gradHr%Re/d_Pe
+      p2%Re=-vel_t%Re-GTD_et%Re*d_Vs+DT_gradHt%Re/d_Pe
+      p3%Re=-vel_z%Re-GTD_ez%Re*d_Vs+DT_gradHz%Re/d_Pe
 
       p%Re =   p1%Re*temp_gradr%Re  &
              + p2%Re*temp_gradt%Re  &
-             + p3%Re*temp_gradz%Re  &
-             - beta*vel_lapz%Re
+             + p3%Re*temp_gradz%Re
+
+      temp_er_Drr%Re=GTD_er%Re/GTD_Drr%Re
+
       call tra_phys2spec(p, s)
       call var_spec2coll(s, temp_N)
+
+      call tra_phys2spec(GTD_er, s)
+      call var_spec2coll(s, GTD_er_col)
+
+      call tra_phys2spec(GTD_et, s)
+      call var_spec2coll(s, GTD_et_col)
+
+      call tra_phys2spec(GTD_et, s)
+      call var_spec2coll(s, GTD_et_col)
+
+      call var_coll_grad(GTD_er_col,GTD_et_col,GTD_ez_col,GTD_grade)
+
+      GTD_er%Re=DT_gradHr%Re/d_Pe-temp_gradr%Re/d_Pe_dm
+      call tra_phys2spec(GTD_er, s)
+      call var_spec2coll(s, GTD_er_col)
+
+      GTD_et%Re=DT_gradHt%Re/d_Pe-temp_gradt%Re/d_Pe_dm
+      call tra_phys2spec(GTD_et, s)
+      call var_spec2coll(s, GTD_et_col)
+
+      GTD_ez%Re=DT_gradHz%Re/d_Pe-temp_gradz%Re/d_Pe_dm
+      call tra_phys2spec(GTD_ez, s)
+      call var_spec2coll(s, GTD_ez_col)
+
+      call var_coll_grad(GTD_er_col,GTD_et_col,GTD_ez_col,GTD_lapH)
+
+
+      call tra_phys2spec(temp_er_Drr, s)
+      call var_spec2coll(s, temp_er_Drr_col)
 
       _loop_km_begin
          a = d_alpha*k * vel_U
 
-         temp_N%Re(:,nh) = temp_N%Re(:,nh) + a*temp_tau%Im(:,nh)
+         temp_N%Re(:,nh) = temp_N%Re(:,nh) + a*temp_tau%Im(:,nh) &
+                          + GTD_lapH%Re(:,nh) - d_Vs*GTD_grade%Re(:,nh)
 
-         temp_N%Im(:,nh) = temp_N%Im(:,nh) - a*temp_tau%Re(:,nh)
+         temp_N%Im(:,nh) = temp_N%Im(:,nh) - a*temp_tau%Re(:,nh) &
+                          + GTD_lapH%Im(:,nh) - d_Vs*GTD_grade%Im(:,nh)
 
       _loop_km_end
       				! zero mode real
       if(mpi_rnk/=0) return
-      temp_N%Re(:,0) = temp_N%Re(:,0)-beta*vel_Upp
       temp_N%Im(:,0) = 0d0
 
    end subroutine non_temperature
    !------------------------------------------------------------------------
-   !  get cfl max dt due to flow field
+   !  get cfl max dt due to flow field (TODO: GTD updates)
    !------------------------------------------------------------------------
       subroutine non_maxtstep()
          double precision :: d,mx, dt(6),dt_(6), r(i_N)

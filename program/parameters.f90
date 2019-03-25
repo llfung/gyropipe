@@ -21,10 +21,11 @@
 
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
    double precision            :: d_Re          = 0.240642274d0
-   double precision            :: d_Pr          = 50.39052658d0
    double precision            :: d_Ri          = 13.381607173d0
-   double precision            :: d_Vs          = 0.523598776d0
-   double precision            :: d_beta        = 0.204545933d0
+   double precision, parameter :: d_Vs          = 0.523598776d0
+   double precision, parameter :: d_dr          = 2.1d0
+   double precision            :: d_Pe          = 1/d_Vs/d_Vs*d_dr
+   double precision            :: d_Pe_dm       = 0.3d0/d_Vs/d_Vs*d_dr
    double precision            :: d_alpha       = 1.25d0
    logical,          parameter :: b_const_flux  = .true.
    logical,          parameter :: b_mirrorsym   = .false.

@@ -17,6 +17,9 @@
    type (phys) :: temp_p   !temperature perturbation (physical)
    type (coll) :: temp_tau !temperature perturbation
    type (coll) :: temp_N !nonlinear terms temperature eq temp_n = -u.grad(tau)
+   type (phys) :: temp_er_Drr ! e_r/Drr, for b.c.
+   type (coll) :: temp_er_Drr_col
+
 
   ! double precision :: temp_T0(i_N) !temperature basic state T0 = 1 -r^2
   ! double precision :: temp_T0p(i_N) !temperature gradient basic state dT/dr = -2r
@@ -38,7 +41,7 @@
    subroutine temp_precompute()
       call var_coll_init(temp_tau)
       if (mpi_rnk/=0) return
-      temp_tau%Re(:,0)=(1d0 - mes_D%r(:,2))*d_Re*d_Pr*d_beta*d_Vs
+      temp_tau%Re(:,0)=(1d0 - mes_D%r(:,2))*d_Pe_dm*d_dr*d_Vs
     !  temp_T0  =  1d0 - mes_D%r(:,2)	! 1 - r^2
     !  temp_T0p = - 2d0 * mes_D%r(:,1)	! dT/dr
    end subroutine temp_precompute
@@ -54,12 +57,12 @@
 
 			! lhs matrices
       d1 =  1d0/tim_dt
-      d2 = -d_implicit/(d_Re*d_Pr)
+      d2 = -d_implicit/(d_Pe_dm)
       call tim_lumesh_init_mod(0,1,d1,d2, LD)
 
       			! timestepping matrices for rhs
       d1 =  1d0/tim_dt
-      d2 =  (1d0-d_implicit)/(d_Re*d_Pr)
+      d2 =  (1d0-d_implicit)/(d_Pe_dm)
       call tim_mesh_init(0,d1,d2, Lt)
 
       ! For B.C. at r=R
@@ -143,13 +146,11 @@
   subroutine temp_tempbc(a)
      type (coll), intent(inout) :: a
      integer :: n
-     double precision :: fac, gradrRe,gradrIm
-     fac=d_Re*d_Pr*d_beta*d_Vs
+     double precision :: fac
+     fac=d_Pe*d_Vs
      do n = 0, var_H%pH1
-        gradrRe=dot_product(mes_D%dr1(1:1+i_KL,1),vel_uz%Re(i_N-i_KL:i_N,n))
-        gradrIm=dot_product(mes_D%dr1(1:1+i_KL,1),vel_uz%Im(i_N-i_KL:i_N,n))
-        a%Re(i_N, n ) = fac*(vel_Up_col%Re(i_N,n)+gradrRe)
-        a%Im(i_N, n ) = fac*(vel_Up_col%Im(i_N,n)+gradrIm)
+        a%Re(i_N, n ) = fac*temp_er_Drr_col%Re(i_N,n)
+        a%Im(i_N, n ) = fac*temp_er_Drr_col%Im(i_N,n)
      end do
   end subroutine temp_tempbc
 

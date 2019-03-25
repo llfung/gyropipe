@@ -22,8 +22,13 @@
     type (phys) :: vel_G21, vel_G22, vel_G23
     type (phys) :: vel_G31, vel_G32, vel_G33
 
-    type (phys) :: GTD_D11, GTD_D12, GTD_D13
-    type (phys) :: GTD_D22, GTD_D23, GTD_D33
+    type (phys) :: GTD_Drr, GTD_Drt, GTD_Drz
+    type (phys) :: GTD_Dtt, GTD_Dtz, GTD_Dzz
+
+    type (phys) :: GTD_er, GTD_et, GTD_ez
+    type (phys) :: GTD_e1, GTD_e2, GTD_e3
+
+    type (coll) :: GTD_er_col, GTD_et_col, GTD_ez_col, GTD_grade, GTD_lapH
 
     type (phys) :: GG1, GG2, GG3
 
@@ -32,13 +37,17 @@
     type (phys_cmp) :: W31, W32, W33
     type (phys_cmp) :: W1_norm, W2_norm, W3_norm
 
-
+    INTEGER           :: I,J,K,L,II,JJ,KK,RR,QQ,SS,PP
+    INTEGER           :: INFO, ipvt(3)
+    INTEGER,PARAMETER :: LWMAX=24
+    DOUBLE PRECISION :: WORK(LWMAX)
 
     DOUBLE PRECISION :: BeReint(27),BeImint(27),BBReint(45),BBImint(45)
+    DOUBLE PRECISION :: e123(3),ertz(3)
     DOUBLE COMPLEX :: Be(3,3),BB(3,3),W(3,3),Winv(3,3)
     DOUBLE COMPLEX :: BB_trans(3,3),Diff(3,3),Diff2(3,3),transform_matrix(3,3)
     type (phys) :: det
-    type (phys_cmp) :: p1, p2, phi
+    type (phys_cmp) :: traceG2, traceG2_scaled, phi
     type (phys_cmp) :: beta1, beta2, beta3
     DOUBLE COMPLEX :: beta_temp
 
@@ -52,6 +61,8 @@
     type(bspline_3d) :: fint_BeIm(27)
     type(bspline_3d) :: fint_BBRe(45)
     type(bspline_3d) :: fint_BBIm(45)
+    type(bspline_2d) :: fint_e(3)
+
     INTEGER :: iflag
 
     INTEGER           :: file_id
@@ -59,6 +70,8 @@
     DOUBLE PRECISION              :: S_step, theta_step, eig_step
     DOUBLE PRECISION, ALLOCATABLE :: BeRe_mul(:,:,:,:), BeIm_mul(:,:,:,:)
     DOUBLE PRECISION, ALLOCATABLE :: BBRe_mul(:,:,:,:), BBIm_mul(:,:,:,:)
+    DOUBLE PRECISION, ALLOCATABLE :: e1_mul(:,:), e2_mul(:,:)
+    DOUBLE PRECISION, ALLOCATABLE :: e3_mul(:,:)
   contains
     ! Main Algorithm
     subroutine GTD_compute()
@@ -70,17 +83,17 @@
         -vel_Grt%Re*vel_Gtr%Re*vel_Gzz%Re &
         -vel_Grz%Re*vel_Gtt%Re*vel_Gzr%Re)
 
-      p1%CMP=SQRT(DCMPLX( &
+      traceG2%CMP=SQRT(DCMPLX( &
         (vel_Grr%Re**2d0+vel_Gtt%Re**2d0+vel_Gzz%Re**2d0 &
         +2d0*(vel_Grt%Re*vel_Gtr%Re &
             + vel_Grz%Re*vel_Gzr%Re &
             + vel_Gzt%Re*vel_Gtz%Re)) &
         /6d0))
-      p2%CMP= DCMPLX(det%Re)/(p1%CMP**3d0)/DCMPLX(2d0)
+      traceG2_scaled%CMP= DCMPLX(det%Re)/(traceG2%CMP**3d0)/DCMPLX(2d0)
 
-      phi%CMP=ACOS(p2%CMP)/DCMPLX(3d0)
-      beta1%CMP=DCMPLX(2d0)*COS(phi%CMP)*p1%CMP
-      beta2%CMP=DCMPLX(2d0)*COS(phi%CMP+DCMPLX(2d0*d_PI/3d0))*p1%CMP
+      phi%CMP=ACOS(traceG2_scaled%CMP)/DCMPLX(3d0)
+      beta1%CMP=DCMPLX(2d0)*COS(phi%CMP)*traceG2%CMP
+      beta2%CMP=DCMPLX(2d0)*COS(phi%CMP+DCMPLX(2d0*d_PI/3d0))*traceG2%CMP
       beta3%CMP=-beta2%CMP-beta1%CMP
 
       GTD_eig_imag%Re=max(ABS(imag(beta1%CMP)),ABS(imag(beta2%CMP)))
@@ -118,7 +131,7 @@
       +GTD_sinsin%Re*vel_Grt%Re
       vel_G21%Re=GTD_cos%Re*vel_Gzt%Re-GTD_sin%Re*vel_Gzr%Re
       vel_G22%Re=vel_Gzz%Re
-      vel_G23%%ReRe=-%ReGTD_cos%Re*vel_Gzr%Re-GTD_sin%Re*vel_Gzt%Re
+      vel_G23%Re=-GTD_cos%Re*vel_Gzr%Re-GTD_sin%Re*vel_Gzt%Re
       vel_G31%Re=-GTD_coscos%Re*vel_Grt%Re+GTD_sincos%Re*(vel_Grr%Re-vel_Gtt%Re) &
       +GTD_sinsin%Re*vel_Gtr%Re
       vel_G32%Re=-GTD_sin%Re*vel_Gtz%Re-GTD_cos%Re*vel_Grz%Re
@@ -149,7 +162,7 @@
           do I=0,i_pZ-1
               X(1)=GTD_eig_imag%Re(I,J,K)
               X(2)=GTD_theta%Re(I,J,K)
-              X(3)=GTD_S%Re(I,J,K)
+              X(3)=GTD_S%Re(I,J,K)/d_dr
 
               W(1,1)=W11%CMP(I,J,K)
               W(2,1)=W21%CMP(I,J,K)
@@ -174,9 +187,9 @@
               ! rcond(I,J,K)=SVD_S(1)/SVD_S(3)
               Winv=W
               Call ZGETRF(3,3,Winv,3,IPVT,INFO)
-              if (INFO/=0) print*, 'CGETRF error: ', Info, beta1(I,J,K)%CMP, beta2(I,J,K)%CMP,beta3(I,J,K)%CMP
+              if (INFO/=0) print*, 'CGETRF error: ', Info, beta1%CMP(I,J,K), beta2%CMP(I,J,K),beta3%CMP(I,J,K)
               Call ZGETRI(3,Winv,3,IPVT,WORK,LWMAX,INFO)
-              if (INFO/=0) print*, 'CGETRI error: ', Info, beta1(I,J,K)%CMP, beta2(I,J,K)%CMP,beta3(I,J,K)%CMP
+              if (INFO/=0) print*, 'CGETRI error: ', Info, beta1%CMP(I,J,K), beta2%CMP(I,J,K),beta3%CMP(I,J,K)
 
               do L=1,27
                 ! call fint_BeRe(L)%evaluate(X(3),X(2),X(1),Y)
@@ -197,6 +210,12 @@
                 ! call fint_BBIm(L)%evaluate(X(3),X(2),X(1),Y)
                 call fint_BBIm(L)%evaluate(X(3),X(2),X(1),0,0,0,Y,iflag)
                 BBImint(L)=Y
+              end do
+
+              do L=1,3
+                ! call fint_BBRe(L)%evaluate(X(3),X(2),Y)
+                call fint_e(L)%evaluate(X(3),X(2),0,0,Y,iflag)
+                e123(L)=Y
               end do
 
               Be(:,:)=(0d0,0d0)
@@ -232,23 +251,29 @@
               Diff=Be+BB_trans*DCMPLX(X(3))
 
               transform_matrix(:,:)=DCMPLX(0.0)
-              transform_matrix(1,1)=DCMPLX(GTD_sin(I,J,K))
-              transform_matrix(1,2)=DCMPLX(-GTD_cos(I,J,K))
+              transform_matrix(1,1)=DCMPLX(GTD_sin%Re(I,J,K))
+              transform_matrix(1,2)=DCMPLX(-GTD_cos%Re(I,J,K))
               transform_matrix(2,3)=DCMPLX(-1.0)
-              transform_matrix(3,1)=DCMPLX(GTD_cos(I,J,K))
-              transform_matrix(3,2)=DCMPLX(GTD_sin(I,J,K))
+              transform_matrix(3,1)=DCMPLX(GTD_cos%Re(I,J,K))
+              transform_matrix(3,2)=DCMPLX(GTD_sin%Re(I,J,K))
 
               Diff=(transpose(Diff)+Diff)/DCMPLX(2d0)
               Diff2=MATMUL(transpose(transform_matrix),Diff)
               Diff=MATMUL(Diff2,transform_matrix)
 
+              ertz=MATMUL(e123,DBLE(transform_matrix))
+
               !Checked
-              GTD_D11%Re(I,J,K)=DBLE(Diff(1,1))
-              GTD_D12%Re(I,J,K)=DBLE(Diff(1,2))
-              GTD_D13%Re(I,J,K)=DBLE(Diff(1,3))
-              GTD_D22%Re(I,J,K)=DBLE(Diff(2,2))
-              GTD_D23%Re(I,J,K)=DBLE(Diff(2,3))
-              GTD_D33%Re(I,J,K)=DBLE(Diff(3,3))
+              GTD_Drr%Re(I,J,K)=DBLE(Diff(1,1))
+              GTD_Drt%Re(I,J,K)=DBLE(Diff(1,2))
+              GTD_Drz%Re(I,J,K)=DBLE(Diff(1,3))
+              GTD_Dtt%Re(I,J,K)=DBLE(Diff(2,2))
+              GTD_Dtz%Re(I,J,K)=DBLE(Diff(2,3))
+              GTD_Dzz%Re(I,J,K)=DBLE(Diff(3,3))
+
+              GTD_er%Re(I,J,K)=ertz(1)
+              GTD_et%Re(I,J,K)=ertz(2)
+              GTD_ez%Re(I,J,K)=ertz(3)
 
           end do
         end do
@@ -279,6 +304,9 @@
       call GTD_read('BeIm',BeIm_mul,27)
       call GTD_read('BBRe',BBRe_mul,45)
       call GTD_read('BBIm',BBIm_mul,45)
+      call GTD_read_e('e1_array',e1_mul)
+      call GTD_read_e('e2_array',e2_mul)
+      call GTD_read_e('e3_array',e3_mul)
 
       ! Initialise interpolation object
       ALLOCATE(fint_S(S_len))
@@ -304,6 +332,11 @@
         call fint_BBIm(I)%initialize(fint_S,fint_theta,fint_eig,BBIm_mul(:,:,:,I),4,4,4,iflag)
         if (iflag/=0) print*, 'Initialising error',iflag
       end do
+
+      call fint_e(1)%initialize(fint_S,fint_theta,e1_mul(:,:),4,4,iflag)
+      call fint_e(2)%initialize(fint_S,fint_theta,e2_mul(:,:),4,4,iflag)
+      call fint_e(3)%initialize(fint_S,fint_theta,e3_mul(:,:),4,4,iflag)
+
       ! Close the CDF file
       call GTD_close()
     end subroutine GTD_precompute
@@ -330,13 +363,24 @@
       INTEGER :: e, id, dimid
       character(*),     intent(in)  :: nm
       integer, intent(in)  :: res_len
-      REAL, intent(out), allocatable :: res(:,:,:,:)
-      e=nf90_inq_dimid(file_id,nm, dimid)
+      DOUBLE PRECISION, intent(out), allocatable :: res(:,:,:,:)
+
       allocate(res(S_len,theta_len,eig_len,res_len))
 
       e=nf90_inq_varid(file_id,nm, id)
       e=nf90_get_var(file_id,id,res)
+
     end subroutine GTD_read
+    subroutine GTD_read_e(nm,res)
+      INTEGER :: e, id, dimid
+      character(*),     intent(in)  :: nm
+      DOUBLE PRECISION, intent(out), allocatable :: res(:,:)
+
+      allocate(res(S_len,theta_len))
+
+      e=nf90_inq_varid(file_id,nm, id)
+      e=nf90_get_var(file_id,id,res)
+    end subroutine GTD_read_e
 
     subroutine GTD_close()
       INTEGER :: e

@@ -7,7 +7,7 @@ numcore := $(shell ./num_core.sh)
 
 TRANSFORM	= fftw3
 MODSOBJ		= io.o meshs.o mpi.o nonlinear.o parameters.o \
-		  temperature.o timestep.o transform.o variables.o velocity.o
+		  temperature.o timestep.o transform.o variables.o velocity.o GTD.o
 
 #COMPILER	= g95 -C
 #COMPFLAGS	= -cpp -c -O3
@@ -35,7 +35,7 @@ COMPFLAGS	= -ffree-line-length-none -x f95-cpp-input -c -O3 \
                   #-C #-pg
 LIBS		= \
 		  -L/usr/lib \
-		  cheby.o -lfftw3 -llapack -lnetcdff \
+		  cheby.o -lfftw3 -llapack -lnetcdff -lbspline \
 		  # -lblas -lcurl
 endif
 
@@ -62,6 +62,7 @@ util : 	$(MODSOBJ) $(UTILDIR)/$(UTIL).f90
 #------------------------------------------------------------------------
 run :
 	cp state.cdf.in $(INSTDIR)
+	cp ./playground/GTD_lib.cdf $(INSTDIR)
 	mv $(INSTDIR) $(RUNDIR)
 ifeq (${numcore},1)
 	(cd $(RUNDIR); nohup $(RUNDIR)/main.out > $(RUNDIR)/OUT.log 2> $(RUNDIR)/OUT.err &)
@@ -102,7 +103,7 @@ meshs.o : $(PROGDIR)meshs.f90 parameters.o mpi.o
 mpi.o : $(PROGDIR)mpi.f90 parallel.h
 	$(COMPILER) $(COMPFLAGS) $(PROGDIR)mpi.f90
 
-nonlinear.o : $(PROGDIR)nonlinear.f90 temperature.o velocity.o
+nonlinear.o : $(PROGDIR)nonlinear.f90 temperature.o velocity.o GTD.o
 		$(COMPILER) $(COMPFLAGS) $(PROGDIR)nonlinear.f90
 
 parameters.o : $(PROGDIR)parameters.f90 parallel.h
@@ -123,3 +124,6 @@ variables.o : $(PROGDIR)variables.f90 meshs.o
 
 velocity.o : $(PROGDIR)velocity.f90 timestep.o transform.o
 	$(COMPILER) $(COMPFLAGS) $(PROGDIR)velocity.f90
+
+GTD.o : $(PROGDIR)GTD.f90 velocity.o transform.o variables.o
+	$(COMPILER) $(COMPFLAGS) $(PROGDIR)GTD.f90
