@@ -17,6 +17,7 @@
     type (phys) :: GTD_theta
     type (phys) :: GTD_sin,GTD_cos,GTD_coscos,GTD_sinsin,GTD_sincos
     type (phys) :: GTD_eig_imag
+    type (phys) :: GTD_TSOURCE,GTD_FSOURCE,GTD_diag_bool
 
     type (phys) :: vel_G11, vel_G12, vel_G13
     type (phys) :: vel_G21, vel_G22, vel_G23
@@ -39,15 +40,13 @@
 
     INTEGER           :: I,J,K,L,II,JJ,KK,RR,QQ,SS,PP
     INTEGER           :: INFO, ipvt(3)
-    INTEGER,PARAMETER :: LWMAX=24
-    DOUBLE PRECISION :: WORK(LWMAX)
 
     DOUBLE PRECISION :: BeReint(27),BeImint(27),BBReint(45),BBImint(45)
     DOUBLE PRECISION :: e123(3),ertz(3)
     DOUBLE COMPLEX :: Be(3,3),BB(3,3),W(3,3),Winv(3,3)
     DOUBLE COMPLEX :: BB_trans(3,3),Diff(3,3),Diff2(3,3),transform_matrix(3,3)
     type (phys) :: det
-    type (phys_cmp) :: traceG2, traceG2_scaled, phi
+    type (phys_cmp) :: traceG2, halfdetB, phi
     type (phys_cmp) :: beta1, beta2, beta3
     DOUBLE COMPLEX :: beta_temp
 
@@ -75,23 +74,121 @@
   contains
     ! Main Algorithm
     subroutine GTD_compute()
-      ! Compute eigenvalue
-      det%Re=(vel_Grr%Re*vel_Gtt%Re*vel_Gzz%Re &
-        +vel_Grt%Re*vel_Gtz%Re*vel_Gzr%Re &
-        +vel_Grz%Re*vel_Gtr%Re*vel_Gzt%Re &
-        -vel_Grr%Re*vel_Gtz%Re*vel_Gzt%Re &
-        -vel_Grt%Re*vel_Gtr%Re*vel_Gzz%Re &
-        -vel_Grz%Re*vel_Gtt%Re*vel_Gzr%Re)
+      ! Calculate e_avg
+      GTD_S%Re=dsqrt(vel_curlr%Re**2d0+vel_curlt_comb%Re**2d0+vel_curlz%Re**2d0)
+      GTD_theta%Re=dacos(-vel_curlz%Re/GTD_S%Re)
+      GTD_sin%Re=vel_curlt_comb%Re/dsqrt(vel_curlt_comb%Re**2d0+vel_curlr%Re**2d0)
+      GTD_cos%Re=vel_curlr%Re/dsqrt(vel_curlt_comb%Re**2d0+vel_curlr%Re**2d0)
+      call GTD_eavg()
+      print*,'ok 4', mpi_rnk
+      ! if (mpi_rnk==0) print*, vel_Grr%Re(0,2,4), vel_Grt%Re(0,2,4), vel_Grz%Re(0,2,4)
+      ! if (mpi_rnk==0) print*, vel_Gtr%Re(0,2,4), vel_Gtt%Re(0,2,4), vel_Gtz%Re(0,2,4)
+      ! if (mpi_rnk==0) print*, vel_Gzr%Re(0,2,4), vel_Gzt%Re(0,2,4), vel_Gzz%Re(0,2,4)
+      ! if (mpi_rnk==0) print*, vel_Grz%Re(0,2,:)
+      ! vel_Gzr%Re=vel_Gzr%Re-vel_Grz%Re
 
+      ! Check diagonalisability
+      call GTD_prevar()
+
+      GTD_diag_bool%Re=MERGE(GTD_TSOURCE%Re,GTD_FSOURCE%Re,ABS(traceG2%CMP)<1d-8 .or. ABS(DBLE(halfdetB%CMP))-1d0<1d-8)
+      ! print*, GTD_diag_bool%Re
+      ! Compute eigenvalue
+        ! Modify for non-diagonalisable
+      vel_curlt_comb%Re=vel_curlt_comb%Re-2d0*GTD_diag_bool%Re
+      vel_Gzr%Re=vel_Gzr%Re-GTD_diag_bool%Re
+      vel_Grz%Re=vel_Grz%Re+GTD_diag_bool%Re
+
+      GTD_S%Re=dsqrt(vel_curlr%Re**2d0+vel_curlt_comb%Re**2d0+vel_curlz%Re**2d0)
+      GTD_theta%Re=dacos(-vel_curlz%Re/GTD_S%Re)
+      GTD_sin%Re=vel_curlt_comb%Re/dsqrt(vel_curlt_comb%Re**2d0+vel_curlr%Re**2d0)
+      GTD_cos%Re=vel_curlr%Re/dsqrt(vel_curlt_comb%Re**2d0+vel_curlr%Re**2d0)
+      GTD_sinsin%Re=vel_curlt_comb%Re**2d0/(vel_curlt_comb%Re**2d0+vel_curlr%Re**2d0)
+      GTD_coscos%Re=vel_curlr%Re**2d0/(vel_curlt_comb%Re**2d0+vel_curlr%Re**2d0)
+      GTD_sincos%Re=vel_curlr%Re*vel_curlt_comb%Re/(vel_curlt_comb%Re**2d0+vel_curlr%Re**2d0)
+      print*,'ok 5', mpi_rnk
+      if (mpi_rnk==0) then
+        print*, vel_Grr%Re(1,1,1), vel_Grt%Re(1,1,1), vel_Grz%Re(1,1,1)
+        print*, vel_Gtr%Re(1,1,1), vel_Gtt%Re(1,1,1), vel_Gtz%Re(1,1,1)
+        print*, vel_Gzr%Re(1,1,1), vel_Gzt%Re(1,1,1), vel_Gzz%Re(1,1,1)
+        print*, GTD_S%Re(1,1,1)
+      end if
+
+      ! Compute eigenvalue
+      call GTD_prevar()
+      call GTD_eigsys(0)
+      if (mpi_rnk==0) then
+        print*, GTD_Drr%Re(1,1,1), GTD_Drt%Re(1,1,1), GTD_Drz%Re(1,1,1)
+        print*, GTD_Dtt%Re(1,1,1), GTD_Dtz%Re(1,1,1), GTD_Dzz%Re(1,1,1)
+      end if
+
+      print*,'ok 6', mpi_rnk
+      ! ReCompute eigenvalue for non-diagonalisable
+      vel_curlt_comb%Re=vel_curlt_comb%Re+4d0*GTD_diag_bool%Re
+      vel_Gzr%Re=vel_Gzr%Re+2d0*GTD_diag_bool%Re
+      vel_Grz%Re=vel_Grz%Re-2d0*GTD_diag_bool%Re
+
+      GTD_S%Re=dsqrt(vel_curlr%Re**2d0+vel_curlt_comb%Re**2d0+vel_curlz%Re**2d0)
+      GTD_theta%Re=dacos(-vel_curlz%Re/GTD_S%Re)
+      GTD_sin%Re=vel_curlt_comb%Re/dsqrt(vel_curlt_comb%Re**2d0+vel_curlr%Re**2d0)
+      GTD_cos%Re=vel_curlr%Re/dsqrt(vel_curlt_comb%Re**2d0+vel_curlr%Re**2d0)
+      GTD_sinsin%Re=vel_curlt_comb%Re**2d0/(vel_curlt_comb%Re**2d0+vel_curlr%Re**2d0)
+      GTD_coscos%Re=vel_curlr%Re**2d0/(vel_curlt_comb%Re**2d0+vel_curlr%Re**2d0)
+      GTD_sincos%Re=vel_curlr%Re*vel_curlt_comb%Re/(vel_curlt_comb%Re**2d0+vel_curlr%Re**2d0)
+
+      ! ReCompute eigenvalue for non-diagonalisable
+      call GTD_prevar()
+      call GTD_eigsys(1) ! With interpolation
+      print*,'ok 7', mpi_rnk
+    end subroutine GTD_compute
+    subroutine GTD_eavg()
+      do K=1,i_pN
+        do J=0,i_Th-1
+          do I=0,i_pZ-1
+              X(2)=GTD_theta%Re(I,J,K)
+              X(3)=GTD_S%Re(I,J,K)/d_dr
+              do L=1,3
+                ! call fint_BBRe(L)%evaluate(X(3),X(2),Y)
+                call fint_e(L)%evaluate(X(3),X(2),0,0,Y,iflag)
+                e123(L)=Y
+              end do
+
+              transform_matrix(:,:)=DCMPLX(0.0)
+              transform_matrix(1,1)=DCMPLX(GTD_sin%Re(I,J,K))
+              transform_matrix(1,2)=DCMPLX(-GTD_cos%Re(I,J,K))
+              transform_matrix(2,3)=DCMPLX(-1.0)
+              transform_matrix(3,1)=DCMPLX(GTD_cos%Re(I,J,K))
+              transform_matrix(3,2)=DCMPLX(GTD_sin%Re(I,J,K))
+
+              ertz=MATMUL(e123,DBLE(transform_matrix))
+
+              GTD_er%Re(I,J,K)=ertz(1)
+              GTD_et%Re(I,J,K)=ertz(2)
+              GTD_ez%Re(I,J,K)=ertz(3)
+
+          end do
+        end do
+      end do
+    end subroutine GTD_eavg
+    subroutine GTD_prevar()
       traceG2%CMP=SQRT(DCMPLX( &
         (vel_Grr%Re**2d0+vel_Gtt%Re**2d0+vel_Gzz%Re**2d0 &
         +2d0*(vel_Grt%Re*vel_Gtr%Re &
             + vel_Grz%Re*vel_Gzr%Re &
             + vel_Gzt%Re*vel_Gtz%Re)) &
-        /6d0))
-      traceG2_scaled%CMP= DCMPLX(det%Re)/(traceG2%CMP**3d0)/DCMPLX(2d0)
+        /6d0))/DCMPLX(GTD_S%Re)
 
-      phi%CMP=ACOS(traceG2_scaled%CMP)/DCMPLX(3d0)
+      det%Re=(vel_Grr%Re*vel_Gtt%Re*vel_Gzz%Re &
+        +vel_Grt%Re*vel_Gtz%Re*vel_Gzr%Re &
+        +vel_Grz%Re*vel_Gtr%Re*vel_Gzt%Re &
+        -vel_Grr%Re*vel_Gtz%Re*vel_Gzt%Re &
+        -vel_Grt%Re*vel_Gtr%Re*vel_Gzz%Re &
+        -vel_Grz%Re*vel_Gtt%Re*vel_Gzr%Re)/(GTD_S%Re**3d0)
+
+      halfdetB%CMP= DCMPLX(det%Re)/(traceG2%CMP**3d0)/DCMPLX(2d0)
+    end subroutine GTD_prevar
+    subroutine GTD_eigsys(F)
+      INTEGER, INTENT(IN) :: F
+      phi%CMP=ACOS(halfdetB%CMP)/DCMPLX(3d0)
       beta1%CMP=DCMPLX(2d0)*COS(phi%CMP)*traceG2%CMP
       beta2%CMP=DCMPLX(2d0)*COS(phi%CMP+DCMPLX(2d0*d_PI/3d0))*traceG2%CMP
       beta3%CMP=-beta2%CMP-beta1%CMP
@@ -137,33 +234,46 @@
       vel_G32%Re=-GTD_sin%Re*vel_Gtz%Re-GTD_cos%Re*vel_Grz%Re
       vel_G33%Re=GTD_coscos%Re*vel_Grr%Re+GTD_sincos%Re*(vel_Grt%Re+vel_Gtr%Re) &
       +GTD_sinsin%Re*vel_Gtt%Re
-
-      ! call save_vel_local('G123.cdf')
+      if (mpi_rnk==0 .and. F==0) then
+        print*, vel_G11%Re(1,1,1), vel_G12%Re(1,1,1), vel_G13%Re(1,1,1)
+        print*, vel_G21%Re(1,1,1), vel_G22%Re(1,1,1), vel_G23%Re(1,1,1)
+        print*, vel_G31%Re(1,1,1), vel_G32%Re(1,1,1), vel_G33%Re(1,1,1)
+        print*, GTD_S%Re(1,1,1)
+      end if
       ! Compute eigenvector
       GG1%Re=vel_G11%Re*vel_G11%Re+vel_G12%Re*vel_G21%Re+vel_G13%Re*vel_G31%Re
       GG2%Re=vel_G21%Re*vel_G11%Re+vel_G22%Re*vel_G21%Re+vel_G23%Re*vel_G31%Re
       GG3%Re=vel_G31%Re*vel_G11%Re+vel_G32%Re*vel_G21%Re+vel_G33%Re*vel_G31%Re
 
-      W11%CMP=DCMPLX(GG1%Re)+beta1%CMP*DCMPLX(vel_G11%Re)+beta2%CMP*beta3%CMP
-      W21%CMP=DCMPLX(GG2%Re)+beta1%CMP*DCMPLX(vel_G21%Re)
-      W31%CMP=DCMPLX(GG3%Re)+beta1%CMP*DCMPLX(vel_G31%Re)
+      W11%CMP=DCMPLX(GG1%Re/(GTD_S%Re**2d0))+beta1%CMP*DCMPLX(vel_G11%Re/GTD_S%Re)+beta2%CMP*beta3%CMP
+      W21%CMP=DCMPLX(GG2%Re/(GTD_S%Re**2d0))+beta1%CMP*DCMPLX(vel_G21%Re/GTD_S%Re)
+      W31%CMP=DCMPLX(GG3%Re/(GTD_S%Re**2d0))+beta1%CMP*DCMPLX(vel_G31%Re/GTD_S%Re)
 
-      W12%CMP=DCMPLX(GG1%Re)+beta2%CMP*DCMPLX(vel_G11%Re)+beta1%CMP*beta3%CMP
-      W22%CMP=DCMPLX(GG2%Re)+beta2%CMP*DCMPLX(vel_G21%Re)
-      W32%CMP=DCMPLX(GG3%Re)+beta2%CMP*DCMPLX(vel_G31%Re)
+      GG1%Re=vel_G11%Re*vel_G12%Re+vel_G12%Re*vel_G22%Re+vel_G13%Re*vel_G32%Re
+      GG2%Re=vel_G21%Re*vel_G12%Re+vel_G22%Re*vel_G22%Re+vel_G23%Re*vel_G32%Re
+      GG3%Re=vel_G31%Re*vel_G12%Re+vel_G32%Re*vel_G22%Re+vel_G33%Re*vel_G32%Re
 
-      W13%CMP=DCMPLX(GG1%Re)+beta3%CMP*DCMPLX(vel_G11%Re)+beta1%CMP*beta2%CMP
-      W23%CMP=DCMPLX(GG2%Re)+beta3%CMP*DCMPLX(vel_G21%Re)
-      W33%CMP=DCMPLX(GG3%Re)+beta3%CMP*DCMPLX(vel_G31%Re)
+      W12%CMP=DCMPLX(GG1%Re/(GTD_S%Re**2d0))+beta2%CMP*DCMPLX(vel_G12%Re/GTD_S%Re)
+      W22%CMP=DCMPLX(GG2%Re/(GTD_S%Re**2d0))+beta2%CMP*DCMPLX(vel_G22%Re/GTD_S%Re)+beta1%CMP*beta3%CMP
+      W32%CMP=DCMPLX(GG3%Re/(GTD_S%Re**2d0))+beta2%CMP*DCMPLX(vel_G32%Re/GTD_S%Re)
 
+      GG1%Re=vel_G11%Re*vel_G13%Re+vel_G12%Re*vel_G23%Re+vel_G13%Re*vel_G33%Re
+      GG2%Re=vel_G21%Re*vel_G13%Re+vel_G22%Re*vel_G23%Re+vel_G23%Re*vel_G33%Re
+      GG3%Re=vel_G31%Re*vel_G13%Re+vel_G32%Re*vel_G23%Re+vel_G33%Re*vel_G33%Re
+
+      W13%CMP=DCMPLX(GG1%Re/(GTD_S%Re**2d0))+beta3%CMP*DCMPLX(vel_G13%Re/GTD_S%Re)
+      W23%CMP=DCMPLX(GG2%Re/(GTD_S%Re**2d0))+beta3%CMP*DCMPLX(vel_G23%Re/GTD_S%Re)
+      W33%CMP=DCMPLX(GG3%Re/(GTD_S%Re**2d0))+beta3%CMP*DCMPLX(vel_G33%Re/GTD_S%Re)+beta1%CMP*beta2%CMP
 
       do K=1,i_pN
         do J=0,i_Th-1
           do I=0,i_pZ-1
+            if (F==0 .or. GTD_diag_bool%Re(I,J,K)/=0d0) then
               X(1)=GTD_eig_imag%Re(I,J,K)
               X(2)=GTD_theta%Re(I,J,K)
               X(3)=GTD_S%Re(I,J,K)/d_dr
 
+              If (I==1 .and. J==1 .and. K==1 .and. F==0 .and. mpi_rnk==0) print*, X
               W(1,1)=W11%CMP(I,J,K)
               W(2,1)=W21%CMP(I,J,K)
               W(3,1)=W31%CMP(I,J,K)
@@ -182,45 +292,47 @@
               W(:,1)=W(:,1)/W1_norm%CMP(I,J,K)
               W(:,2)=W(:,2)/W2_norm%CMP(I,J,K)
               W(:,3)=W(:,3)/W3_norm%CMP(I,J,K)
-              ! Winv=W
-              ! call ZGESVD('N','N',3,3,Winv,3,SVD_S,SVD_U,1,SVD_VT,1,WORK,LWMAX,RWORK,INFO)
-              ! rcond(I,J,K)=SVD_S(1)/SVD_S(3)
-              Winv=W
-              Call ZGETRF(3,3,Winv,3,IPVT,INFO)
-              if (INFO/=0) print*, 'CGETRF error: ', Info, beta1%CMP(I,J,K), beta2%CMP(I,J,K),beta3%CMP(I,J,K)
-              Call ZGETRI(3,Winv,3,IPVT,WORK,LWMAX,INFO)
-              if (INFO/=0) print*, 'CGETRI error: ', Info, beta1%CMP(I,J,K), beta2%CMP(I,J,K),beta3%CMP(I,J,K)
 
+              Winv=InvMat(W)
+              If (I==1 .and. J==1 .and. K==1 .and. F==0 .and. mpi_rnk==0) then
+                Print*,'W'
+                print*, W(1,:)
+                print*, W(2,:)
+                print*, W(3,:)
+                Print*,'Winv'
+                print*, Winv(1,:)
+                print*, Winv(2,:)
+                print*, Winv(3,:)
+                Print*,'------------------------------------------'
+              end if
               do L=1,27
                 ! call fint_BeRe(L)%evaluate(X(3),X(2),X(1),Y)
                 call fint_BeRe(L)%evaluate(X(3),X(2),X(1),0,0,0,Y,iflag)
+                if (iflag/=0) print*, 'Interpolation error',iflag
                 BeReint(L)=Y
               end do
               do L=1,27
                 ! call fint_BeIm(L)%evaluate(X(3),X(2),X(1),Y)
                 call fint_BeIm(L)%evaluate(X(3),X(2),X(1),0,0,0,Y,iflag)
+                if (iflag/=0) print*, 'Interpolation error',iflag
                 BeImint(L)=Y
               end do
               do L=1,45
                 ! call fint_BBRe(L)%evaluate(X(3),X(2),X(1),Y)
                 call fint_BBRe(L)%evaluate(X(3),X(2),X(1),0,0,0,Y,iflag)
+                if (iflag/=0) print*, 'Interpolation error',iflag
                 BBReint(L)=Y
               end do
               do L=1,45
                 ! call fint_BBIm(L)%evaluate(X(3),X(2),X(1),Y)
                 call fint_BBIm(L)%evaluate(X(3),X(2),X(1),0,0,0,Y,iflag)
+                if (iflag/=0) print*, 'Interpolation error',iflag
                 BBImint(L)=Y
-              end do
-
-              do L=1,3
-                ! call fint_BBRe(L)%evaluate(X(3),X(2),Y)
-                call fint_e(L)%evaluate(X(3),X(2),0,0,Y,iflag)
-                e123(L)=Y
               end do
 
               Be(:,:)=(0d0,0d0)
               BB(:,:)=(0d0,0d0)
-              ! Be (Checked)
+              ! Be (Checked)ó
               do RR=1,3
                 do JJ=1,3
                   do qq=1,3
@@ -246,7 +358,14 @@
               BB(:,2)=BB(:,2)*(beta2%CMP(I,J,K))
               BB(:,3)=BB(:,3)*(beta3%CMP(I,J,K))
               BB_trans=MATMUL(TRANSPOSE(Winv),MATMUL(BB,Winv))
-
+              If (I==1 .and. J==1 .and. K==1 .and. F==0 .and. mpi_rnk==0) then
+                print*, Be(1,:)
+                print*, Be(2,:)
+                print*, Be(3,:)
+                print*, BB_trans(1,:)
+                print*, BB_trans(2,:)
+                print*, BB_trans(3,:)
+              end if
               !Checked
               Diff=Be+BB_trans*DCMPLX(X(3))
 
@@ -261,25 +380,50 @@
               Diff2=MATMUL(transpose(transform_matrix),Diff)
               Diff=MATMUL(Diff2,transform_matrix)
 
-              ertz=MATMUL(e123,DBLE(transform_matrix))
-
               !Checked
-              GTD_Drr%Re(I,J,K)=DBLE(Diff(1,1))
-              GTD_Drt%Re(I,J,K)=DBLE(Diff(1,2))
-              GTD_Drz%Re(I,J,K)=DBLE(Diff(1,3))
-              GTD_Dtt%Re(I,J,K)=DBLE(Diff(2,2))
-              GTD_Dtz%Re(I,J,K)=DBLE(Diff(2,3))
-              GTD_Dzz%Re(I,J,K)=DBLE(Diff(3,3))
-
-              GTD_er%Re(I,J,K)=ertz(1)
-              GTD_et%Re(I,J,K)=ertz(2)
-              GTD_ez%Re(I,J,K)=ertz(3)
-
+              if (F==0) then
+                GTD_Drr%Re(I,J,K)=DBLE(Diff(1,1))
+                GTD_Drt%Re(I,J,K)=DBLE(Diff(1,2))
+                GTD_Drz%Re(I,J,K)=DBLE(Diff(1,3))
+                GTD_Dtt%Re(I,J,K)=DBLE(Diff(2,2))
+                GTD_Dtz%Re(I,J,K)=DBLE(Diff(2,3))
+                GTD_Dzz%Re(I,J,K)=DBLE(Diff(3,3))
+              else
+                GTD_Drr%Re(I,J,K)=(GTD_Drr%Re(I,J,K)+DBLE(Diff(1,1)))/2d0
+                GTD_Drt%Re(I,J,K)=(GTD_Drt%Re(I,J,K)+DBLE(Diff(1,2)))/2d0
+                GTD_Drz%Re(I,J,K)=(GTD_Drz%Re(I,J,K)+DBLE(Diff(1,3)))/2d0
+                GTD_Dtt%Re(I,J,K)=(GTD_Dtt%Re(I,J,K)+DBLE(Diff(2,2)))/2d0
+                GTD_Dtz%Re(I,J,K)=(GTD_Dtz%Re(I,J,K)+DBLE(Diff(2,3)))/2d0
+                GTD_Dzz%Re(I,J,K)=(GTD_Dzz%Re(I,J,K)+DBLE(Diff(3,3)))/2d0
+              end if
+            end if
           end do
         end do
       end do
-
-    end subroutine GTD_compute
+    end subroutine GTD_eigsys
+    function InvMat(MatIn)
+      DOUBLE COMPLEX :: MatIn(3,3)
+      DOUBLE COMPLEX :: InvMat(3,3)
+      DOUBLE COMPLEX :: Matdet
+      Matdet=MatIn(1,1)*MatIn(2,2)*MatIn(3,3) &
+              +MatIn(1,2)*MatIn(2,3)*MatIn(3,1) &
+              +MatIn(1,3)*MatIn(2,1)*MatIn(3,2) &
+              -MatIn(1,1)*MatIn(2,3)*MatIn(3,2) &
+              -MatIn(1,2)*MatIn(2,1)*MatIn(3,3) &
+              -MatIn(1,3)*MatIn(2,2)*MatIn(3,1)
+      if (abs(Matdet)<1d-8) print*, 'InvMat of W: det(W)=', Matdet
+      InvMat(1,1)=MatIn(2,2)*MatIn(3,3)-MatIn(2,3)*MatIn(3,2)
+      InvMat(1,2)=-MatIn(1,2)*MatIn(3,3)+MatIn(1,3)*MatIn(3,2)
+      InvMat(1,3)=MatIn(1,2)*MatIn(2,3)-MatIn(1,3)*MatIn(2,2)
+      InvMat(2,1)=-MatIn(2,1)*MatIn(3,3)+MatIn(2,3)*MatIn(3,1)
+      InvMat(2,2)=MatIn(1,1)*MatIn(3,3)-MatIn(1,3)*MatIn(3,1)
+      InvMat(2,3)=-MatIn(1,1)*MatIn(2,3)+MatIn(1,3)*MatIn(2,1)
+      InvMat(3,1)=MatIn(2,1)*MatIn(3,2)-MatIn(2,2)*MatIn(3,1)
+      InvMat(3,2)=-MatIn(1,1)*MatIn(3,2)+MatIn(1,2)*MatIn(3,1)
+      InvMat(3,3)=MatIn(2,2)*MatIn(1,1)-MatIn(2,1)*MatIn(1,2)
+      InvMat=InvMat/Matdet
+      return
+    end function
     function BeInd(RRR,QQQ,JJJ)
       INTEGER, INTENT(IN) :: RRR,QQQ,JJJ
       INTEGER :: BeInd
@@ -297,6 +441,8 @@
         RETURN
     end function BBInd
     subroutine GTD_precompute()
+      GTD_TSOURCE%RE(:,:,:)=1d-1
+      GTD_FSOURCE%RE(:,:,:)=0d0
       ! Open the CDF file
       call GTD_open()
       ! Read-in whole library
