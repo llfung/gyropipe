@@ -118,6 +118,7 @@
    subroutine non_temperature()
       double precision :: a(i_N), c, beta, Pe
       _loop_km_vars
+      call GTD_compute()
       beta=d_Vs
 
       DT_gradHr%Re=(GTD_Drr%Re*temp_gradr%Re+GTD_Drt%Re*temp_gradt%Re+GTD_Drz%Re*temp_gradz%Re)
