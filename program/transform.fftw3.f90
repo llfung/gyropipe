@@ -31,13 +31,13 @@
  contains
 
 !------------------------------------------------------------------------
-! Setup plans for transforms.  
+! Setup plans for transforms.
 !------------------------------------------------------------------------
    subroutine tra_precompute()
       integer, parameter :: flag=32 !=FFTW_PATIENT see fftw3.f
       integer :: sgn, n(1), howmany, inembed(1), onembed(1)
- 
-      n = (/i_3K/)            
+
+      n = (/i_3K/)
       howmany = _Ms
       inembed = (/i_3K*_Ms/)
       onembed = (/i_3K*_Ms/)
@@ -56,7 +56,7 @@
          Xs, inembed, i_pZ, 1,  Ys, onembed, i_pZ, 1,  flag)
       call dfftw_plan_many_dft_r2c(plan_r2c, 1, n, howmany,  &
          Ys, onembed, i_pZ, 1,  Xs, inembed, i_pZ, 1,  flag)
-      
+
    end subroutine tra_precompute
 
 
@@ -101,7 +101,21 @@
       if(nc==3)  call var_spec2coll(s1,c, s2,c2, s3,c3)
    end subroutine tra_phys2coll
 
+   subroutine tra_phys2coll_bc(pin,cout)
+      type (phys_bc), intent(in)  :: pin
+      type (phys) :: p
+      type (coll_bc), intent(out) :: cout
+      type (coll) :: c
+      ! TODO: Slim down the transformation of BC
+      p%Re=0d0
+      if (mpi_rnk==_Nr) p%Re(:,:,i_pN)=pin%Re
 
+      call tra_phys2spec(p,  s1)
+      call var_spec2coll(s1, c)
+
+      cout%Re(1,:)=c%Re(i_N,:)
+      cout%Im(1,:)=c%Im(i_N,:)
+   end subroutine tra_phys2coll_bc
 !------------------------------------------------------------------------
 !  Convert spectral to real space
 !------------------------------------------------------------------------
@@ -109,7 +123,7 @@
       type (spec), intent(in)  :: s
       type (phys), intent(out) :: p
       integer :: nh, n,m,m_
-      				! for each r_n ...      
+      				! for each r_n ...
       do n = 1, mes_D%pN
          if(mpi_rnk/_Nr==0) then
             X(0:i_K1,   0) = dcmplx(s%Re(0:i_K1,n),s%Im(0:i_K1,n))
@@ -128,20 +142,20 @@
             nh = nh + 2*i_K-1
          end do
          call dfftw_execute(plan_c2cf)
-#if _Ns == 1 
+#if _Ns == 1
          Xs(:,0:i_M1) = Y
 #else
          T(:,:,n) = Y
       end do
       call tra_T2Ts()
       do n = 1, mes_D%pN
-         Xs(:,0:i_M1) = Ts(:,:,n)         
+         Xs(:,0:i_M1) = Ts(:,:,n)
 #endif
          Xs(:,i_M:) = 0d0
          call dfftw_execute(plan_c2r)
          p%Re(:,:,n) = Ys
       end do
-   
+
    end subroutine tra_spec2phys
 
 
@@ -186,7 +200,7 @@
             nh = nh + 2*i_K-1
          end do
       end do
-         
+
    end subroutine tra_phys2spec
 
 
@@ -229,7 +243,7 @@
             mpi_double_precision, dst, mpi_tg, mpi_comm_world,  &
             mpi_rq(mpi_sze+stp), mpi_er)
       end do
- 
+
       do stp = 0, _Ns-1
          src  = modulo(mpi_sze-stp+rnk, _Ns)*_Nr + rko
          call mpi_wait( mpi_rq(stp), mpi_st, mpi_er)

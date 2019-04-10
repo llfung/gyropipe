@@ -18,7 +18,7 @@
     type (phys) :: GTD_sin,GTD_cos
     type (phys) :: GTD_eig_imag
     ! type (phys_bool) :: GTD_TSOURCE,GTD_FSOURCE
-    LOGICAL :: GTD_diag_bool
+    LOGICAL :: GTD_diag_bool,GTD_real_flag
     type (phys) :: traceG2sq
 
     type (phys) :: vel_G11, vel_G12, vel_G13
@@ -27,6 +27,9 @@
 
     type (phys) :: GTD_Drr, GTD_Drt, GTD_Drz
     type (phys) :: GTD_Dtt, GTD_Dtz, GTD_Dzz
+
+    type (phys_bc) :: GTD_Drr_bc, GTD_Drt_bc, GTD_Drz_bc
+    type (phys_bc) :: GTD_er_bc
 
     type (phys) :: GTD_er, GTD_et, GTD_ez
     type (phys) :: GTD_e1, GTD_e2, GTD_e3
@@ -43,8 +46,12 @@
     INTEGER           :: I,J,K,LL,II,JJ,KK,RR,QQ,SS,PP
     INTEGER           :: INFO
     INTEGER,PARAMETER :: LWMAX=24
-    DOUBLE PRECISION :: WORK(LWMAX)
+    DOUBLE PRECISION :: WORK(LWMAX),IWORK(4)
     DOUBLE PRECISION :: vl(3,3), vr(3,3), eigr(3), eigi(3)
+    integer :: ILO,IHI
+    double precision :: SCALEe(3)
+    double precision :: ABNRM
+    double precision  :: RCONDE(3),RCONDV(3)
 
     DOUBLE PRECISION :: BeReint(27),BeImint(27),BBReint(45),BBImint(45)
     DOUBLE PRECISION :: e123(3),ertz(3)
@@ -55,28 +62,56 @@
     type (phys_cmp) :: beta1, beta2, beta3
     DOUBLE COMPLEX :: beta_temp
 
-    DOUBLE PRECISION :: Y,X(3)
+    DOUBLE PRECISION :: Y,X(4)
     DOUBLE PRECISION, ALLOCATABLE :: fint_S(:),fint_eig(:),fint_theta(:)
     ! type(linear_interp_3d) :: fint_BeRe(27)
     ! type(linear_interp_3d) :: fint_BeIm(27)
     ! type(linear_interp_3d) :: fint_BBRe(45)
     ! type(linear_interp_3d) :: fint_BBIm(45)
-    type(bspline_3d) :: fint_BeRe(27)
-    type(bspline_3d) :: fint_BeIm(27)
-    type(bspline_3d) :: fint_BBRe(45)
-    type(bspline_3d) :: fint_BBIm(45)
+    type(bspline_4d) :: fint_BeRe(27),fint_REAL_BeRe(27)
+    type(bspline_4d) :: fint_BeIm(27),fint_REAL_BeIm(27)
+    type(bspline_4d) :: fint_BBRe(45),fint_REAL_BBRe(45)
+    type(bspline_4d) :: fint_BBIm(45),fint_REAL_BBIm(45)
     type(bspline_2d) :: fint_e(3)
+    type(bspline_2d) :: fint_bc_Drr,fint_bc_Drt,fint_bc_Drz
+    type(bspline_2d) :: fint_bc_er
 
     INTEGER :: iflag
 
     INTEGER           :: file_id
-    INTEGER           :: S_len, theta_len, eig_len
-    DOUBLE PRECISION              :: S_step, theta_step, eig_step
-    DOUBLE PRECISION, ALLOCATABLE :: BeRe_mul(:,:,:,:), BeIm_mul(:,:,:,:)
-    DOUBLE PRECISION, ALLOCATABLE :: BBRe_mul(:,:,:,:), BBIm_mul(:,:,:,:)
+    INTEGER           :: S_len, theta_len, eig_len, eig2_len
+    DOUBLE PRECISION              :: S_step, theta_step, eig_step, eig2_step
+    DOUBLE PRECISION, ALLOCATABLE :: BeRe_mul(:,:,:,:,:), BeIm_mul(:,:,:,:,:)
+    DOUBLE PRECISION, ALLOCATABLE :: BBRe_mul(:,:,:,:,:), BBIm_mul(:,:,:,:,:)
+    DOUBLE PRECISION, ALLOCATABLE :: BeRe_REAL_mul(:,:,:,:,:), BeIm_REAL_mul(:,:,:,:,:)
+    DOUBLE PRECISION, ALLOCATABLE :: BBRe_REAL_mul(:,:,:,:,:), BBIm_REAL_mul(:,:,:,:,:)
     DOUBLE PRECISION, ALLOCATABLE :: e1_mul(:,:), e2_mul(:,:)
-    DOUBLE PRECISION, ALLOCATABLE :: e3_mul(:,:)
+    DOUBLE PRECISION, ALLOCATABLE :: e3_mul(:,:), Drr_bc_mul(:,:)
+    DOUBLE PRECISION, ALLOCATABLE :: Drt_bc_mul(:,:), Drz_bc_mul(:,:)
+    DOUBLE PRECISION, ALLOCATABLE :: er_bc_mul(:,:)
   contains
+    subroutine GTD_compute_bc()
+      if (mpi_rnk/=_Nr) return
+      K=mes_D%pN
+        do J=0,i_Th-1
+          do I=0,i_pZ-1
+            call fint_bc_Drr%evaluate(vel_Grt%Re(I,J,K),vel_Grz%Re(I,J,K),0,0,Y,iflag)
+            if (iflag/=0) print*, 'BC Interpolation error',iflag
+            GTD_Drr_bc%Re(I,J)=Y
+
+            call fint_bc_Drz%evaluate(vel_Grt%Re(I,J,K),vel_Grz%Re(I,J,K),0,0,Y,iflag)
+            if (iflag/=0) print*, 'BC Interpolation error',iflag
+            GTD_Drz_bc%Re(I,J)=Y
+
+            call fint_bc_Drt%evaluate(vel_Grt%Re(I,J,K),vel_Grz%Re(I,J,K),0,0,Y,iflag)
+            if (iflag/=0) print*, 'BC Interpolation error',iflag
+            GTD_Drt_bc%Re(I,J)=Y
+
+            call fint_bc_er%evaluate(vel_Grt%Re(I,J,K),vel_Grz%Re(I,J,K),0,0,Y,iflag)
+            GTD_er_bc%Re(I,J)=Y
+            end do
+        end do
+    end subroutine GTD_compute_bc
     ! Main Algorithm
     subroutine GTD_compute()
       ! Calculate e_avg
@@ -137,15 +172,63 @@
                 A(2,1)=A(2,1)+1d-1
               endif
 
-                call DGEEV('N','V',3,A,3,eigr,eigi,vl,3,vr,3,WORK,LWMAX,INFO)
-                !call DGEEVX('N','V',3,A,3,eigr,eigi,vl,3,vr,3,WORK,LWMAX,INFO) ! Balancing option
+                !call DGEEV('N','V',3,A,3,eigr,eigi,vl,3,vr,3,WORK,LWMAX,INFO)
+                call DGEEVX('B','N','V','N',3,A,3,eigr,eigi,vl,3,vr,3,ILO,IHI,SCALEe,ABNRM,RCONDE,RCONDV,WORK,LWMAX,IWORK,INFO) ! Balancing option
                 IF(INFO/=0) PRINT*, "DGEEV Problem"
 
                 if (eigi(1)==0d0 .and. eigi(2)==0d0) then
+                  GTD_real_flag=.True.
                     ! Real Eigen value script
-                    W=vr
+                    if (eigr(1)<eigr(2)) then
+                      if (eigr(2)<eigr(3)) then
+                        W(:,3)=DCMPLX(vr(:,1))
+                        W(:,2)=DCMPLX(vr(:,2))
+                        W(:,1)=DCMPLX(vr(:,3))
+                        eigi(1)=eigr(3)
+                        eigr(3)=eigr(1)
+                        eigr(1)=eigi(1)
+                        eigi(1)=0d0
+                      else
+                        W(:,1)=DCMPLX(vr(:,2))
+                        eigi(1)=eigr(1)
+                        eigr(1)=eigr(2)
+                        if (eigr(1)<eigr(3)) then
+                          W(:,2)=DCMPLX(vr(:,3))
+                          W(:,3)=DCMPLX(vr(:,1))
+                          eigr(2)=eigr(3)
+                          eigr(3)=eigi(1)
+                          eigi(1)=0d0
+                        else
+                          W(:,2)=DCMPLX(vr(:,1))
+                          W(:,3)=DCMPLX(vr(:,3))
+                          eigr(2)=eigr(1)
+                          eigi(1)=0d0
+                        endif
+                      endif
+                    else
+                      if (eigr(2)>eigr(3)) then
+                        W=DCMPLX(vr)
+                      else
+                        W(:,3)=DCMPLX(vr(:,2))
+                        eigi(3)=eigr(3)
+                        eigr(3)=eigr(2)
+                        if (eigr(1)<eigr(3)) then
+                          W(:,1)=DCMPLX(vr(:,3))
+                          W(:,2)=DCMPLX(vr(:,1))
+                          eigr(2)=eigr(1)
+                          eigr(1)=eigi(3)
+                          eigi(3)=0d0
+                        else
+                          W(:,1)=DCMPLX(vr(:,1))
+                          W(:,2)=DCMPLX(vr(:,3))
+                          eigr(2)=eigr(3)
+                          eigi(3)=0d0
+                        endif
+                      endif
+                    endif
                 else
                   if (eigi(1)==0d0) then
+                    GTD_real_flag=.False.
                     ! Swop eigenvalues
                     eigr(3)=eigr(1)
                     eigr(1)=eigr(2)
@@ -171,14 +254,63 @@
                   A(1,2)=A(1,2)-2d-1
                   A(2,1)=A(2,1)-2d-1
 
-                  call DGEEV('N','V',3,A,3,eigr,eigi,vl,3,vr,3,WORK,LWMAX,INFO)
+                  !call DGEEV('N','V',3,A,3,eigr,eigi,vl,3,vr,3,WORK,LWMAX,INFO)
+                  call DGEEVX('B','N','V','N',3,A,3,eigr,eigi,vl,3,vr,3,ILO,IHI,SCALEe,ABNRM,RCONDE,RCONDV,WORK,LWMAX,IWORK,INFO) ! Balancing option
                   IF(INFO/=0) PRINT*, "DGEEV Problem"
 
                   if (eigi(1)==0d0 .and. eigi(2)==0d0) then
+                    GTD_real_flag=.True.
                       ! Real Eigen value script
-                      W=vr
+                      if (eigr(1)<eigr(2)) then
+                        if (eigr(2)<eigr(3)) then
+                          W(:,3)=DCMPLX(vr(:,1))
+                          W(:,2)=DCMPLX(vr(:,2))
+                          W(:,1)=DCMPLX(vr(:,3))
+                          eigi(1)=eigr(3)
+                          eigr(3)=eigr(1)
+                          eigr(1)=eigi(1)
+                          eigi(1)=0d0
+                        else
+                          W(:,1)=DCMPLX(vr(:,2))
+                          eigi(1)=eigr(1)
+                          eigr(1)=eigr(2)
+                          if (eigr(1)<eigr(3)) then
+                            W(:,2)=DCMPLX(vr(:,3))
+                            W(:,3)=DCMPLX(vr(:,1))
+                            eigr(2)=eigr(3)
+                            eigr(3)=eigi(1)
+                            eigi(1)=0d0
+                          else
+                            W(:,2)=DCMPLX(vr(:,1))
+                            W(:,3)=DCMPLX(vr(:,3))
+                            eigr(2)=eigr(1)
+                            eigi(1)=0d0
+                          endif
+                        endif
+                      else
+                        if (eigr(2)>eigr(3)) then
+                          W=DCMPLX(vr)
+                        else
+                          W(:,3)=DCMPLX(vr(:,2))
+                          eigi(3)=eigr(3)
+                          eigr(3)=eigr(2)
+                          if (eigr(1)<eigr(3)) then
+                            W(:,1)=DCMPLX(vr(:,3))
+                            W(:,2)=DCMPLX(vr(:,1))
+                            eigr(2)=eigr(1)
+                            eigr(1)=eigi(3)
+                            eigi(3)=0d0
+                          else
+                            W(:,1)=DCMPLX(vr(:,1))
+                            W(:,2)=DCMPLX(vr(:,3))
+                            eigr(2)=eigr(3)
+                            eigi(3)=0d0
+                          endif
+                        endif
+                      endif
                   else
                     if (eigi(1)==0d0) then
+                      GTD_real_flag=.False.
                       ! Swop eigenvalues
                       eigr(3)=eigr(1)
                       eigr(1)=eigr(2)
@@ -211,11 +343,11 @@
       do K=1,i_pN
         do J=0,i_Th-1
           do I=0,i_pZ-1
-              X(2)=GTD_theta%Re(I,J,K)
-              X(3)=GTD_S%Re(I,J,K)/d_dr
+              X(3)=GTD_theta%Re(I,J,K)
+              X(4)=GTD_S%Re(I,J,K)/d_dr
               do LL=1,3
-                ! call fint_BBRe(LL)%evaluate(X(3),X(2),Y)
-                call fint_e(LL)%evaluate(X(3),X(2),0,0,Y,iflag)
+                ! call fint_BBRe(LL)%evaluate(X(4),X(3),Y)
+                call fint_e(LL)%evaluate(X(4),X(3),0,0,Y,iflag)
                 e123(LL)=Y
               end do
 
@@ -258,35 +390,64 @@
     subroutine GTD_eigsys(F)
       INTEGER, INTENT(IN) :: F
 
-              X(1)=eigi(1)
-              X(2)=GTD_theta%Re(I,J,K)
-              X(3)=GTD_S%Re(I,J,K)/d_dr
 
+              X(3)=GTD_theta%Re(I,J,K)
+              X(4)=GTD_S%Re(I,J,K)/d_dr
+            if (GTD_real_flag) then
+              X(2)=eigr(1)
+              X(1)=eigr(3)
               do LL=1,27
-                ! call fint_BeRe(LL)%evaluate(X(3),X(2),X(1),Y)
-                call fint_BeRe(LL)%evaluate(X(3),X(2),X(1),0,0,0,Y,iflag)
+                ! call fint_BeRe(LL)%evaluate(X(4),X(3),X(1),Y)
+                call fint_REAL_BeRe(LL)%evaluate(X(4),X(3),X(2),X(1),0,0,0,Y,iflag)
                 if (iflag/=0) print*, 'Interpolation error',iflag
                 BeReint(LL)=Y
               end do
               do LL=1,27
-                ! call fint_BeIm(LL)%evaluate(X(3),X(2),X(1),Y)
-                call fint_BeIm(LL)%evaluate(X(3),X(2),X(1),0,0,0,Y,iflag)
+                ! call fint_BeIm(LL)%evaluate(X(4),X(3),X(1),Y)
+                call fint_REAL_BeIm(LL)%evaluate(X(4),X(3),X(2),X(1),0,0,0,Y,iflag)
                 if (iflag/=0) print*, 'Interpolation error',iflag
                 BeImint(LL)=Y
               end do
               do LL=1,45
-                ! call fint_BBRe(LL)%evaluate(X(3),X(2),X(1),Y)
-                call fint_BBRe(LL)%evaluate(X(3),X(2),X(1),0,0,0,Y,iflag)
+                ! call fint_BBRe(LL)%evaluate(X(4),X(3),X(1),Y)
+                call fint_REAL_BBRe(LL)%evaluate(X(4),X(3),X(2),X(1),0,0,0,Y,iflag)
                 if (iflag/=0) print*, 'Interpolation error',iflag
                 BBReint(LL)=Y
               end do
               do LL=1,45
-                ! call fint_BBIm(LL)%evaluate(X(3),X(2),X(1),Y)
-                call fint_BBIm(LL)%evaluate(X(3),X(2),X(1),0,0,0,Y,iflag)
+                ! call fint_BBIm(LL)%evaluate(X(4),X(3),X(1),Y)
+                call fint_REAL_BBIm(LL)%evaluate(X(4),X(3),X(2),X(1),0,0,0,Y,iflag)
                 if (iflag/=0) print*, 'Interpolation error',iflag
                 BBImint(LL)=Y
               end do
-
+            else
+              X(2)=eigi(1)
+              X(1)=eigr(1)
+              do LL=1,27
+                ! call fint_BeRe(LL)%evaluate(X(4),X(3),X(1),Y)
+                call fint_BeRe(LL)%evaluate(X(4),X(3),X(2),X(1),0,0,0,Y,iflag)
+                if (iflag/=0) print*, 'Interpolation error',iflag
+                BeReint(LL)=Y
+              end do
+              do LL=1,27
+                ! call fint_BeIm(LL)%evaluate(X(4),X(3),X(1),Y)
+                call fint_BeIm(LL)%evaluate(X(4),X(3),X(2),X(1),0,0,0,Y,iflag)
+                if (iflag/=0) print*, 'Interpolation error',iflag
+                BeImint(LL)=Y
+              end do
+              do LL=1,45
+                ! call fint_BBRe(LL)%evaluate(X(4),X(3),X(1),Y)
+                call fint_BBRe(LL)%evaluate(X(4),X(3),X(2),X(1),0,0,0,Y,iflag)
+                if (iflag/=0) print*, 'Interpolation error',iflag
+                BBReint(LL)=Y
+              end do
+              do LL=1,45
+                ! call fint_BBIm(LL)%evaluate(X(4),X(3),X(1),Y)
+                call fint_BBIm(LL)%evaluate(X(4),X(3),X(2),X(1),0,0,0,Y,iflag)
+                if (iflag/=0) print*, 'Interpolation error',iflag
+                BBImint(LL)=Y
+              end do
+            endif
               Be(:,:)=(0d0,0d0)
               BB(:,:)=(0d0,0d0)
               ! Be (Checked)ó
@@ -317,7 +478,7 @@
               BB_trans=MATMUL(TRANSPOSE(Winv),MATMUL(BB,Winv))
 
               !Checked
-              Diff=Be+BB_trans*DCMPLX(X(3))
+              Diff=Be+BB_trans*DCMPLX(X(4))
 
               Diff=(transpose(Diff)+Diff)/DCMPLX(2d0)
               Diff2=MATMUL(transpose(transform_matrix),Diff)
@@ -383,7 +544,7 @@
       ! GTD_TSOURCE%RE(:,:,:)=.TRUE.
       ! GTD_FSOURCE%RE(:,:,:)=.FALSE.
       ! Open the CDF file
-      call GTD_open()
+      call GTD_open(0)
 
       ! Read-in whole library
       call GTD_read('BeRe',BeRe_mul,27)
@@ -397,10 +558,10 @@
       call GTD_close()
 
 #ifdef _MPI
-      call MPI_BCAST(BeRe_mul, 27*S_len*theta_len*eig_len, MPI_DOUBLE_PRECISION, 0, mpi_comm_world, mpi_er)
-      call MPI_BCAST(BeIm_mul, 27*S_len*theta_len*eig_len, MPI_DOUBLE_PRECISION, 0, mpi_comm_world, mpi_er)
-      call MPI_BCAST(BBRe_mul, 45*S_len*theta_len*eig_len, MPI_DOUBLE_PRECISION, 0, mpi_comm_world, mpi_er)
-      call MPI_BCAST(BBIm_mul, 45*S_len*theta_len*eig_len, MPI_DOUBLE_PRECISION, 0, mpi_comm_world, mpi_er)
+      call MPI_BCAST(BeRe_mul, 27*S_len*theta_len*eig_len*eig2_len, MPI_DOUBLE_PRECISION, 0, mpi_comm_world, mpi_er)
+      call MPI_BCAST(BeIm_mul, 27*S_len*theta_len*eig_len*eig2_len, MPI_DOUBLE_PRECISION, 0, mpi_comm_world, mpi_er)
+      call MPI_BCAST(BBRe_mul, 45*S_len*theta_len*eig_len*eig2_len, MPI_DOUBLE_PRECISION, 0, mpi_comm_world, mpi_er)
+      call MPI_BCAST(BBIm_mul, 45*S_len*theta_len*eig_len*eig2_len, MPI_DOUBLE_PRECISION, 0, mpi_comm_world, mpi_er)
       call MPI_BCAST(e1_mul, S_len*theta_len, MPI_DOUBLE_PRECISION, 0, mpi_comm_world, mpi_er)
       call MPI_BCAST(e2_mul, S_len*theta_len, MPI_DOUBLE_PRECISION, 0, mpi_comm_world, mpi_er)
       call MPI_BCAST(e3_mul, S_len*theta_len, MPI_DOUBLE_PRECISION, 0, mpi_comm_world, mpi_er)
@@ -410,24 +571,25 @@
       ALLOCATE(fint_S(S_len))
       ALLOCATE(fint_theta(theta_len))
       ALLOCATE(fint_eig(eig_len))
+      ALLOCATE(fint_eig2(eig2_len))
       fint_S=(/ ((I-1)*S_step,I=1, S_len) /)
       fint_theta=(/( (I-1)*theta_step,I=1, theta_len )/)
       fint_eig=(/( (I-1)*eig_step,I=1, eig_len) /)
-
+      fint_eig2=(/( (I-1)*eig2_step,I=1, eig2_len) /)
       Do I=1,27
         ! call fint_BeRe(I)%initialize(fint_S,fint_theta,fint_eig,BeRe_mul(:,:,:,I),iflag)
-        call fint_BeRe(I)%initialize(fint_S,fint_theta,fint_eig,BeRe_mul(:,:,:,I),4,4,4,iflag)
+        call fint_BeRe(I)%initialize(fint_S,fint_theta,fint_eig,fint_eig2,BeRe_mul(:,:,:,:,I),4,4,4,iflag)
         if (iflag/=0) print*, 'Initialising error',iflag
         ! call fint_BeIm(I)%initialize(fint_S,fint_theta,fint_eig,BeIm_mul(:,:,:,I),iflag)
-        call fint_BeIm(I)%initialize(fint_S,fint_theta,fint_eig,BeIm_mul(:,:,:,I),4,4,4,iflag)
+        call fint_BeIm(I)%initialize(fint_S,fint_theta,fint_eig,fint_eig2,BeIm_mul(:,:,:,:,I),4,4,4,iflag)
         if (iflag/=0) print*, 'Initialising error',iflag
       end do
       Do I=1,45
         ! call fint_BBRe(I)%initialize(fint_S,fint_theta,fint_eig,BBRe_mul(:,:,:,I),iflag)
-        call fint_BBRe(I)%initialize(fint_S,fint_theta,fint_eig,BBRe_mul(:,:,:,I),4,4,4,iflag)
+        call fint_BBRe(I)%initialize(fint_S,fint_theta,fint_eig,fint_eig2,BBRe_mul(:,:,:,:,I),4,4,4,iflag)
         if (iflag/=0) print*, 'Initialising error',iflag
         ! call fint_BBIm(I)%initialize(fint_S,fint_theta,fint_eig,BBIm_mul(:,:,:,I),iflag)
-        call fint_BBIm(I)%initialize(fint_S,fint_theta,fint_eig,BBIm_mul(:,:,:,I),4,4,4,iflag)
+        call fint_BBIm(I)%initialize(fint_S,fint_theta,fint_eig,fint_eig2,BBIm_mul(:,:,:,:,I),4,4,4,iflag)
         if (iflag/=0) print*, 'Initialising error',iflag
       end do
 
@@ -435,11 +597,116 @@
       call fint_e(2)%initialize(fint_S,fint_theta,e2_mul(:,:),4,4,iflag)
       call fint_e(3)%initialize(fint_S,fint_theta,e3_mul(:,:),4,4,iflag)
 
+      ! Open the CDF file - REAL LIB
+      call GTD_open(1)
+
+      ! Read-in whole library
+      call GTD_read('BeRe',BeRe_REAL_mul,27)
+      call GTD_read('BeIm',BeIm_REAL_mul,27)
+      call GTD_read('BBRe',BBRe_REAL_mul,45)
+      call GTD_read('BBIm',BBIm_REAL_mul,45)
+      ! Close the CDF file
+      call GTD_close()
+
+#ifdef _MPI
+      call MPI_BCAST(BeRe_REAL_mul, 27*S_len*theta_len*eig_len*eig2_len, MPI_DOUBLE_PRECISION, 0, mpi_comm_world, mpi_er)
+      call MPI_BCAST(BeIm_REAL_mul, 27*S_len*theta_len*eig_len*eig2_len, MPI_DOUBLE_PRECISION, 0, mpi_comm_world, mpi_er)
+      call MPI_BCAST(BBRe_REAL_mul, 45*S_len*theta_len*eig_len*eig2_len, MPI_DOUBLE_PRECISION, 0, mpi_comm_world, mpi_er)
+      call MPI_BCAST(BBIm_REAL_mul, 45*S_len*theta_len*eig_len*eig2_len, MPI_DOUBLE_PRECISION, 0, mpi_comm_world, mpi_er)
+#endif
+      if (mpi_rnk==0) print*, 'GTD variables Broadcase finished.'
+      ! Initialise interpolation object
+      ALLOCATE(fint_S(S_len))
+      ALLOCATE(fint_theta(theta_len))
+      ALLOCATE(fint_eig(eig_len))
+      ALLOCATE(fint_eig2(eig2_len))
+      fint_S=(/ ((I-1)*S_step,I=1, S_len) /)
+      fint_theta=(/( (I-1)*theta_step,I=1, theta_len )/)
+      fint_eig=(/( (I-1)*eig_step,I=1, eig_len) /)
+      fint_eig2=(/( (I-1)*eig2_step,I=1, eig2_len) /)
+      Do I=1,27
+        ! call fint_BeRe(I)%initialize(fint_S,fint_theta,fint_eig,BeRe_mul(:,:,:,I),iflag)
+        call fint_REAL_BeRe(I)%initialize(fint_S,fint_theta,fint_eig,fint_eig2,BeRe_REAL_mul(:,:,:,:,I),4,4,4,iflag)
+        if (iflag/=0) print*, 'Initialising error',iflag
+        ! call fint_BeIm(I)%initialize(fint_S,fint_theta,fint_eig,BeIm_mul(:,:,:,I),iflag)
+        call fint_REAL_BeIm(I)%initialize(fint_S,fint_theta,fint_eig,fint_eig2,BeIm_REAL_mul(:,:,:,:,I),4,4,4,iflag)
+        if (iflag/=0) print*, 'Initialising error',iflag
+      end do
+      Do I=1,45
+        ! call fint_BBRe(I)%initialize(fint_S,fint_theta,fint_eig,BBRe_mul(:,:,:,I),iflag)
+        call fint_REAL_BBRe(I)%initialize(fint_S,fint_theta,fint_eig,fint_eig2,BBRe_REAL_mul(:,:,:,:,I),4,4,4,iflag)
+        if (iflag/=0) print*, 'Initialising error',iflag
+        ! call fint_BBIm(I)%initialize(fint_S,fint_theta,fint_eig,BBIm_mul(:,:,:,I),iflag)
+        call fint_REAL_BBIm(I)%initialize(fint_S,fint_theta,fint_eig,fint_eig2,BBIm_REAL_mul(:,:,:,:,I),4,4,4,iflag)
+        if (iflag/=0) print*, 'Initialising error',iflag
+      end do
+
+      ! Open the CDF file - REAL LIB
+      call GTD_open_bc()
+      ! Read-in whole library
+      call GTD_read('Drr',Drr_bc_mul)
+      call GTD_read('Drt',Drt_bc_mul)
+      call GTD_read('Drz',Drz_bc_mul)
+      call GTD_read('er',er_bc_mul)
+
+      call GTD_close()
+
+#ifdef _MPI
+      call MPI_BCAST(Drr_bc_mul, S_len*theta_len, MPI_DOUBLE_PRECISION, 0, mpi_comm_world, mpi_er)
+      call MPI_BCAST(Drt_bc_mul, S_len*theta_len, MPI_DOUBLE_PRECISION, 0, mpi_comm_world, mpi_er)
+      call MPI_BCAST(Drz_bc_mul, S_len*theta_len, MPI_DOUBLE_PRECISION, 0, mpi_comm_world, mpi_er)
+      call MPI_BCAST(er_bc_mul,  S_len*theta_len, MPI_DOUBLE_PRECISION, 0, mpi_comm_world, mpi_er)
+#endif
+      if (mpi_rnk==0) print*, 'BC GTD variables Broadcase finished.'
+      ! Initialise interpolation object
+      ALLOCATE(fint_S(S_len))
+      ALLOCATE(fint_theta(theta_len))
+
+      fint_S=(/ ((I-1)*S_step,I=1, S_len) /)
+      fint_theta=(/( (I-1)*theta_step,I=1, theta_len )/)
+
+        call fint_bc_Drr%initialize(fint_S,fint_theta,Drr_bc_mul(:,:),4,4,iflag)
+        if (iflag/=0) print*, 'BC Initialising error',iflag
+        call fint_bc_Drt%initialize(fint_S,fint_theta,Drt_bc_mul(:,:),4,4,iflag)
+        if (iflag/=0) print*, 'BC Initialising error',iflag
+        call fint_bc_Drz%initialize(fint_S,fint_theta,Drz_bc_mul(:,:),4,4,iflag)
+        if (iflag/=0) print*, 'BC Initialising error',iflag
+        call fint_bc_er%initialize(fint_S,fint_theta,er_bc_mul(:,:),4,4,iflag)
+        if (iflag/=0) print*, 'BC Initialising error',iflag
+
     end subroutine GTD_precompute
-    subroutine GTD_open()
+    subroutine GTD_open_bc()
       INTEGER :: e , id, dimid
       if (mpi_rnk==0) then
-        e=nf90_open('GTD_lib.cdf',nf90_nowrite, file_id) !f is the returned netCDF id
+        e=nf90_open('GTD_lib_bc.cdf',nf90_nowrite, file_id) !f is the returned netCDF id
+
+        if(e/=nf90_noerr) then
+           stop 'io: BC file not found!'
+        end if
+
+        e=nf90_get_att(file_id,nf90_global,'Grt_step'    , S_step)     !function nf90_get_att(ncid, varid, name, values)
+        e=nf90_get_att(file_id,nf90_global,'Grz_step', theta_step) !function nf90_get_att(ncid, varid, name, values)
+        e=nf90_inq_dimid(file_id,'Grt', dimid)
+        e=nf90_inquire_dimension(file_id, dimid, len=S_len)
+        e=nf90_inq_dimid(file_id,'Grz', dimid)
+        e=nf90_inquire_dimension(file_id, dimid, len=theta_len)
+      end if
+#ifdef _MPI
+      call MPI_BCAST(S_len, 1, MPI_INTEGER, 0, mpi_comm_world, mpi_er)
+      call MPI_BCAST(theta_len, 1, MPI_INTEGER, 0, mpi_comm_world, mpi_er)
+      call MPI_BCAST(S_step, 1, MPI_DOUBLE_PRECISION, 0, mpi_comm_world, mpi_er)
+      call MPI_BCAST(theta_step, 1, MPI_DOUBLE_PRECISION, 0, mpi_comm_world, mpi_er)
+#endif
+    end subroutine GTD_open_bc
+    subroutine GTD_open(F)
+      INTEGER :: e , id, dimid
+      INTEGER, INTENT(IN) :: F
+      if (mpi_rnk==0) then
+        if (F==0) then
+          e=nf90_open('GTD_lib.cdf',nf90_nowrite, file_id) !f is the returned netCDF id
+        else
+          e=nf90_open('GTD_lib_real.cdf',nf90_nowrite, file_id) !f is the returned netCDF id
+        endif
         if(e/=nf90_noerr) then
            stop 'io: file not found!'
         end if
@@ -447,6 +714,7 @@
         e=nf90_get_att(file_id,nf90_global,'S_step'    , S_step)     !function nf90_get_att(ncid, varid, name, values)
         e=nf90_get_att(file_id,nf90_global,'theta_step', theta_step) !function nf90_get_att(ncid, varid, name, values)
         e=nf90_get_att(file_id,nf90_global,'eig_step'  , eig_step)   !function nf90_get_att(ncid, varid, name, values)
+        e=nf90_get_att(file_id,nf90_global,'eig2_step'  , eig2_step)   !function nf90_get_att(ncid, varid, name, values)
 
         e=nf90_inq_dimid(file_id,'S', dimid)
         e=nf90_inquire_dimension(file_id, dimid, len=S_len)
@@ -454,14 +722,18 @@
         e=nf90_inquire_dimension(file_id, dimid, len=theta_len)
         e=nf90_inq_dimid(file_id,'eig', dimid)
         e=nf90_inquire_dimension(file_id, dimid, len=eig_len)
+        e=nf90_inq_dimid(file_id,'eig2', dimid)
+        e=nf90_inquire_dimension(file_id, dimid, len=eig2_len)
       end if
 #ifdef _MPI
       call MPI_BCAST(S_len, 1, MPI_INTEGER, 0, mpi_comm_world, mpi_er)
       call MPI_BCAST(theta_len, 1, MPI_INTEGER, 0, mpi_comm_world, mpi_er)
       call MPI_BCAST(eig_len, 1, MPI_INTEGER, 0, mpi_comm_world, mpi_er)
+      call MPI_BCAST(eig2_len, 1, MPI_INTEGER, 0, mpi_comm_world, mpi_er)
       call MPI_BCAST(S_step, 1, MPI_DOUBLE_PRECISION, 0, mpi_comm_world, mpi_er)
       call MPI_BCAST(theta_step, 1, MPI_DOUBLE_PRECISION, 0, mpi_comm_world, mpi_er)
       call MPI_BCAST(eig_step, 1, MPI_DOUBLE_PRECISION, 0, mpi_comm_world, mpi_er)
+      call MPI_BCAST(eig2_step, 1, MPI_DOUBLE_PRECISION, 0, mpi_comm_world, mpi_er)
 #endif
     end subroutine GTD_open
 

@@ -8,6 +8,7 @@
    use transform
    use timestep
    use velocity
+   use GTD
    implicit none
    save
 
@@ -17,9 +18,15 @@
    type (phys) :: temp_p   !temperature perturbation (physical)
    type (coll) :: temp_tau !temperature perturbation
    type (coll) :: temp_N !nonlinear terms temperature eq temp_n = -u.grad(tau)
-   type (phys) :: temp_er_Drr ! e_r/Drr, for b.c.
-   type (coll) :: temp_er_Drr_col
 
+
+   ! For Boundary Condition
+   ! type (phys) :: temp_er_Drr ! e_r/Drr, for b.c.
+   ! type (coll) :: temp_er_Drr_col
+   type (phys_bc) :: temp_bc
+   ! type (phys_bc) :: temp_bc_Drr
+   ! type (phys_bc) :: temp_bc_er
+   type (coll_bc) :: temp_bc_col
 
   ! double precision :: temp_T0(i_N) !temperature basic state T0 = 1 -r^2
   ! double precision :: temp_T0p(i_N) !temperature gradient basic state dT/dr = -2r
@@ -40,6 +47,9 @@
 !------------------------------------------------------------------------
    subroutine temp_precompute()
       call var_coll_init(temp_tau)
+      temp_bc%Re=0d0
+      temp_bc_col%Re=0d0
+      temp_bc_col%Im=0d0
       if (mpi_rnk/=0) return
       temp_tau%Re(:,0)=(1d0 - mes_D%r(:,2))*d_Pe_dm*d_dr*d_Vs
     !  temp_T0  =  1d0 - mes_D%r(:,2)	! 1 - r^2
@@ -109,11 +119,13 @@
       call tim_meshmult(0,Lt,T_,temp_N, temp_tau) !tim_meshmult(S,A,b,c, d)
 						!  multiply  d = A b + c
 						!  S=0, b even for m even; S=1, b odd for m even
+
       call temp_tempbc(temp_tau)
         		! invert
             ! Modify LD to BC need (LD=LD_original*Drr+Drt*im+Drz*ialpha)
+            ! if (mpi_rnk==0) print*, 'before', temp_tau%Re(:,0)
       call tim_lumesh_invert(0,LD, temp_tau)
-
+            ! if (mpi_rnk==0) print*, 'after', temp_tau%Re(:,0)
       if(mpi_rnk==0)  &
          temp_tau%Im(:,0) = 0d0
 
@@ -146,11 +158,10 @@
   subroutine temp_tempbc(a)
      type (coll), intent(inout) :: a
      integer :: n
-     double precision :: fac
-     fac=d_Pe*d_Vs
+
      do n = 0, var_H%pH1
-        a%Re(i_N, n ) = fac*temp_er_Drr_col%Re(i_N,n)
-        a%Im(i_N, n ) = fac*temp_er_Drr_col%Im(i_N,n)
+        a%Re(i_N, n ) = temp_bc_col%Re(n)
+        a%Im(i_N, n ) = temp_bc_col%Im(n)
      end do
   end subroutine temp_tempbc
 

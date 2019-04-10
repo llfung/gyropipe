@@ -39,6 +39,16 @@
       double precision     :: Im(i_N, 0:i_pH1)
    end type coll
 
+   type spec_bc
+      double precision     :: Re(0:_Hs1, 1)
+      double precision     :: Im(0:_Hs1, 1)
+   end type spec_bc
+
+   type coll_bc
+      double precision     :: Re(1, 0:i_pH1)
+      double precision     :: Im(1, 0:i_pH1)
+   end type coll_bc
+
    type phys
       double precision     :: Re(0:i_pZ-1, 0:i_Th-1, i_pN)
    end type phys
@@ -46,6 +56,10 @@
    type phys_cmp
       double complex       :: CMP(0:i_pZ-1, 0:i_Th-1, i_pN)
    end type phys_cmp
+
+   type phys_bc
+     double precision     :: Re(0:i_pZ-1, 0:i_Th-1)
+   end type phys_bc
 
    type (harm)               :: var_H
    type (coll),      private :: c1,c2,c3
@@ -493,8 +507,19 @@
       _loop_km_end
 
    end subroutine var_coll_grad
+   !------------------------------------------------------------------------
+   !  take the r-gradient of a scalar
+   !------------------------------------------------------------------------
+   subroutine var_coll_gradr(p, r)
+      type (coll), intent(in)  :: p
+      type (coll), intent(out) :: r
+      _loop_km_vars
 
+      call var_coll_copy(p,c1)
 
+      call var_coll_meshmult(0,mes_D%dr(1),c1, r)
+
+   end subroutine var_coll_grad
 !------------------------------------------------------------------------
 !  find the divergence of a vector
 !------------------------------------------------------------------------

@@ -16,6 +16,7 @@
    type (spec), private :: s
 
    type (phys), private :: DT_gradHr,DT_gradHt,DT_gradHz
+
  contains
 
 
@@ -133,8 +134,6 @@
              + p2%Re*temp_gradt%Re  &
              + p3%Re*temp_gradz%Re
 
-      temp_er_Drr%Re=GTD_er%Re/GTD_Drr%Re
-
       call tra_phys2spec(p, s)
       call var_spec2coll(s, temp_N)
 
@@ -163,10 +162,6 @@
 
       call var_coll_grad(GTD_er_col,GTD_et_col,GTD_ez_col,GTD_lapH)
 
-
-      call tra_phys2spec(temp_er_Drr, s)
-      call var_spec2coll(s, temp_er_Drr_col)
-
       _loop_km_begin
          a = d_alpha*k * vel_U
 
@@ -178,10 +173,23 @@
 
       _loop_km_end
       				! zero mode real
+
       if(mpi_rnk/=0) return
       temp_N%Im(:,0) = 0d0
 
    end subroutine non_temperature
+   !-------------------------------------------------------------------------
+   !  nonlinear terms for the tempertaure
+   !-------------------------------------------------------------------------
+      subroutine non_temperature_bc()
+         call GTD_compute_bc()
+         if (mpi_rnk==_Nr) temp_bc%Re(:,:) = (d_Vs*d_Pe*GTD_er_bc%Re &
+                              -GTD_Drt_bc%Re*temp_gradt%Re(:,:,mes_D%pN) &
+                              -GTD_Drz_bc%Re*temp_gradz%Re(:,:,mes_D%pN))/GTD_Drr_bc%Re
+
+         call tra_phys2coll_bc(temp_bc,temp_bc_col)
+
+      end subroutine non_temperature_bc
    !------------------------------------------------------------------------
    !  get cfl max dt due to flow field (TODO: GTD updates)
    !------------------------------------------------------------------------
