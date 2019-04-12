@@ -160,8 +160,8 @@
      integer :: n
 
      do n = 0, var_H%pH1
-        a%Re(i_N, n ) = temp_bc_col%Re(n)
-        a%Im(i_N, n ) = temp_bc_col%Im(n)
+        a%Re(i_N, n ) = temp_bc_col%Re(1,n)
+        a%Im(i_N, n ) = temp_bc_col%Im(1,n)
      end do
   end subroutine temp_tempbc
 

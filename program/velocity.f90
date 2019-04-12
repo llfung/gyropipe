@@ -329,8 +329,8 @@
       call tra_coll2phys(dd3,vel_lapz)
 
       ! Adding in base flow
-      if (mpi_rnk==0)c2%Re(:,0)=c2%Re(:,0)-vel_Up(:)
-      call tra_coll2phys(c2,vel_curlt_comb)
+      ! if (mpi_rnk==0)c2%Re(:,0)=c2%Re(:,0)-vel_Up(:)
+      ! call tra_coll2phys(c2,vel_curlt_comb)
       ! Computing Gradient G for GTD
       call var_coll_grad(vel_ur,c1,c2,c3)
       call tra_coll2phys(c1,vel_Grr, c2,vel_Gtr, c3,vel_Gzr)
@@ -352,8 +352,8 @@
          call tra_coll2phys(c1,vel_curlr, c2,vel_curlt, c3,vel_curlz)
 
          ! Adding in base flow
-         if (mpi_rnk==0)c2%Re(:,0)=c2%Re(:,0)-vel_Up(:)
-         call tra_coll2phys(c2,vel_curlt_comb)
+         ! if (mpi_rnk==0)c2%Re(:,0)=c2%Re(:,0)-vel_Up(:)
+         ! call tra_coll2phys(c2,vel_curlt_comb)
          ! Computing Gradient G for GTD
          call var_coll_gradr(vel_ut,c1)
          call tra_coll2phys(c1,vel_Grt)
@@ -361,7 +361,7 @@
          call var_coll_gradr(vel_uz,c1)
          if (mpi_rnk==0)c1%Re(:,0)=c1%Re(:,0)+vel_Up(:)
          call tra_coll2phys(c1,vel_Grz)
-      end subroutine vel_transform
+      end subroutine vel_transform_bc
 !-------------------------------------------------------------------------
 !  nonlinear terms for velocity
 !------------------------------------------------------------------------

@@ -519,7 +519,7 @@
 
       call var_coll_meshmult(0,mes_D%dr(1),c1, r)
 
-   end subroutine var_coll_grad
+   end subroutine var_coll_gradr
 !------------------------------------------------------------------------
 !  find the divergence of a vector
 !------------------------------------------------------------------------

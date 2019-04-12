@@ -33,9 +33,9 @@ endif
 COMPFLAGS	= -ffree-line-length-none -x f95-cpp-input -c -O3 \
 		  -I/usr/include \
                   #-C #-pg
-LIBS		= \
+LIBS		= gtd_eig_cfun.a \
 		  -L/usr/lib \
-		  cheby.o -lfftw3 -llapack -lnetcdff -lbspline \
+		  cheby.o -lfftw3 -llapack -lnetcdff \
 		  # -lblas -lcurl
 endif
 
@@ -62,7 +62,6 @@ util : 	$(MODSOBJ) $(UTILDIR)/$(UTIL).f90
 #------------------------------------------------------------------------
 run :
 	cp state.cdf.in $(INSTDIR)
-	cp ./playground/GTD_lib.cdf $(INSTDIR)
 	mv $(INSTDIR) $(RUNDIR)
 ifeq (${numcore},1)
 	(cd $(RUNDIR); nohup $(RUNDIR)/main.out > $(RUNDIR)/OUT.log 2> $(RUNDIR)/OUT.err &)
@@ -109,7 +108,7 @@ nonlinear.o : $(PROGDIR)nonlinear.f90 temperature.o velocity.o GTD.o
 parameters.o : $(PROGDIR)parameters.f90 parallel.h
 	$(COMPILER) $(COMPFLAGS) $(PROGDIR)parameters.f90
 
-temperature.o : $(PROGDIR)temperature.f90 timestep.o transform.o velocity.o
+temperature.o : $(PROGDIR)temperature.f90 timestep.o transform.o velocity.o GTD.o
 		$(COMPILER) $(COMPFLAGS) $(PROGDIR)temperature.f90
 
 timestep.o : $(PROGDIR)timestep.f90 variables.o
@@ -126,4 +125,4 @@ velocity.o : $(PROGDIR)velocity.f90 timestep.o transform.o
 	$(COMPILER) $(COMPFLAGS) $(PROGDIR)velocity.f90
 
 GTD.o : $(PROGDIR)GTD.f90 velocity.o transform.o variables.o
-	$(COMPILER) $(COMPFLAGS) $(PROGDIR)GTD.f90
+	$(COMPILER) -fno-underscoring $(COMPFLAGS) $(PROGDIR)GTD.f90
