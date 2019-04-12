@@ -15,14 +15,14 @@
    save
 
    integer,	         parameter :: i_N           = 60
-   integer,          parameter :: i_K           = 18
-   integer,          parameter :: i_M           = 32
+   integer,          parameter :: i_K           = 8
+   integer,          parameter :: i_M           = 8
    integer,          parameter :: i_Mp          = 1
 
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
    double precision            :: d_Re          = 0.240642274d0
    double precision            :: d_Ri          = 13.381607173d0
-   double precision, parameter :: d_Vs          = 0.523598776d0
+   double precision, parameter :: d_Vs          = 0.523598776d0 ! Changes with flow rate, as always normalised by bulk flow
    double precision, parameter :: d_dr          = 2.1d0
    double precision            :: d_Pe          = 1/d_Vs/d_Vs*d_dr
    double precision            :: d_Pe_dm       = 0.3d0/d_Vs/d_Vs*d_dr
@@ -34,9 +34,9 @@
    double precision, parameter :: d_minE3d      = 1d-5
 
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
-   integer,          parameter :: i_save_rate1  = 100!100
-   integer,          parameter :: i_save_rate2  = 100
-   integer,          parameter :: i_maxtstep    = 10000
+   integer,          parameter :: i_save_rate1  = 1!100
+   integer,          parameter :: i_save_rate2  = 1
+   integer,          parameter :: i_maxtstep    = 50
    double precision, parameter :: d_maxt        = -1d0
    double precision, parameter :: d_cpuhours    = 1d99 !90d0
    double precision, parameter :: d_time        = 0d0 !-1d0

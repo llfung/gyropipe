@@ -15,6 +15,16 @@
 
    call initialise()
 
+!    call vel_imposesym()
+!    call vel_transform()
+!
+! #ifdef _MPI
+!    call mpi_barrier(mpi_comm_world, mpi_er)
+! #endif
+!
+!    call GTD_compute()
+!
+
       						! main loop
    do while(.not.terminate())
                   ! Predictor Step
@@ -34,6 +44,8 @@
       call var_null(1)          ! where you put util()
       call io_write2files()     ! I/O files
       call vel_predictor()      ! vel_step() called inside (the main stepping algorithm)
+         call vel_transform_bc()
+         call non_temperature_bc()
       call temp_predictor()
       tim_it = 1
                    ! Corrector Step iteration
@@ -44,6 +56,8 @@
          call non_temperature()
          call var_null(2)       ! where you put util()
          call vel_corrector()   ! vel_step() called inside (the main stepping algorithm)
+           call vel_transform_bc()
+           call non_temperature_bc()
          call temp_corrector()
          call tim_check_cgce()  ! check if we can exit corrector iter. If true, tim_it=0.
       end do
@@ -121,6 +135,7 @@
       call temp_precompute()
       call non_precompute()
       call  io_precompute()
+      call GTD_precompute()
 
       if(mpi_rnk==0)  print*, 'loading state...'
       tim_dt = 1d99
@@ -175,6 +190,7 @@
       call mpi_barrier(mpi_comm_world, mpi_er)
       call mpi_finalize(mpi_er)
 #endif
+      call GTD_closing()
       if(mpi_rnk==0) print*, '...done!'
 
    end subroutine cleanup

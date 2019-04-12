@@ -39,10 +39,10 @@
       double precision     :: Im(i_N, 0:i_pH1)
    end type coll
 
-   type spec_bc
-      double precision     :: Re(0:_Hs1, 1)
-      double precision     :: Im(0:_Hs1, 1)
-   end type spec_bc
+   ! type spec_bc
+   !    double precision     :: Re(0:_Hs1, 1)
+   !    double precision     :: Im(0:_Hs1, 1)
+   ! end type spec_bc
 
    type coll_bc
       double precision     :: Re(1, 0:i_pH1)
@@ -53,9 +53,9 @@
       double precision     :: Re(0:i_pZ-1, 0:i_Th-1, i_pN)
    end type phys
 
-   type phys_cmp
-      double complex       :: CMP(0:i_pZ-1, 0:i_Th-1, i_pN)
-   end type phys_cmp
+   ! type phys_cmp
+   !    double complex       :: CMP(0:i_pZ-1, 0:i_Th-1, i_pN)
+   ! end type phys_cmp
 
    type phys_bc
      double precision     :: Re(0:i_pZ-1, 0:i_Th-1)

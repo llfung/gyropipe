@@ -51,7 +51,7 @@
       temp_bc_col%Re=0d0
       temp_bc_col%Im=0d0
       if (mpi_rnk/=0) return
-      temp_tau%Re(:,0)=(1d0 - mes_D%r(:,2))*d_Pe_dm*d_dr*d_Vs
+      temp_tau%Re(:,0)=(1d0 - mes_D%r(:,2))*d_Pe_dm
     !  temp_T0  =  1d0 - mes_D%r(:,2)	! 1 - r^2
     !  temp_T0p = - 2d0 * mes_D%r(:,1)	! dT/dr
    end subroutine temp_precompute
