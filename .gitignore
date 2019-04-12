@@ -47,3 +47,6 @@ HOST
 
 # Playground
 playground/*
+
+# GTD Static Library
+GTD_StaticLib/codegen/*
