@@ -14,8 +14,8 @@
    implicit none
    save
 
-   integer,	         parameter :: i_N           = 120
-   integer,          parameter :: i_K           = 8
+   integer,	         parameter :: i_N           = 60
+   integer,          parameter :: i_K           = 4
    integer,          parameter :: i_M           = 1
    integer,          parameter :: i_Mp          = 1
 
@@ -34,14 +34,14 @@
    double precision, parameter :: d_minE3d      = 1d-5
 
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
-   integer,          parameter :: i_save_rate1  = 100!100
-   integer,          parameter :: i_save_rate2  = 10
-   integer,          parameter :: i_maxtstep    = 10000
+   integer,          parameter :: i_save_rate1  = 1000!100
+   integer,          parameter :: i_save_rate2  = 100
+   integer,          parameter :: i_maxtstep    = 50000
    double precision, parameter :: d_maxt        = -1d0
    double precision, parameter :: d_cpuhours    = 1d99 !90d0
    double precision, parameter :: d_time        = 0d0 !-1d0
    double precision, parameter :: d_timestep    = -1d0 !0.05d0
-   double precision, parameter :: d_maxdt       = 2.5d-5 !1d99
+   double precision, parameter :: d_maxdt       = 0.05d0 !1d99
    double precision, parameter :: d_dterr       = 1d-5 !1d99
    double precision, parameter :: d_courant     = 0.3d0
    double precision, parameter :: d_implicit    = 0.51d0
