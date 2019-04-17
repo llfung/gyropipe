@@ -21,61 +21,81 @@
 
     INTEGER        :: I,J,K
 
-    DOUBLE PRECISION :: A(0:7), Diff(0:8)
-
+    ! DOUBLE PRECISION :: A(0:7), A_(0:7), Diff(0:8)
+    DOUBLE PRECISION :: A(0:2), A_(0:2), Diff(0:4)
   contains
     subroutine GTD_compute_bc()
-      if (mpi_rnk/=_Nr) return
+      if (mpi_rnk/=(_Nr-1)) return
       A(:)=0d0
       K=mes_D%pN
         do J=0,i_Th-1
           do I=0,i_pZ-1
+            A_=A
+            ! A(3)=vel_Grt%Re(I,J,K)/d_dr
+            ! A(6)=vel_Grz%Re(I,J,K)/d_dr
+            A(2)=vel_Grz%Re(I,J,K)/d_dr
 
-            A(3)=vel_Grt%Re(I,J,K)/d_dr
-            A(6)=vel_Grz%Re(I,J,K)/d_dr
+            ! call gtd_eig_cfun(A,Diff)
+            if (maxval(dabs(A_-A))/=0d0) call gtd2d_libinter_cfun(A,Diff)
 
-            call gtd_eig_cfun(A,Diff)
+            ! GTD_Drr_bc%Re(I,J)=Diff(0)
+            ! GTD_Drt_bc%Re(I,J)=Diff(1)
+            ! GTD_Drz_bc%Re(I,J)=Diff(2)
+            !
+            ! GTD_er_bc%Re(I,J)=Diff(6)
 
             GTD_Drr_bc%Re(I,J)=Diff(0)
-            GTD_Drt_bc%Re(I,J)=Diff(1)
-            GTD_Drz_bc%Re(I,J)=Diff(2)
+            GTD_Drt_bc%Re(I,J)=0d0
+            GTD_Drz_bc%Re(I,J)=Diff(1)
 
-            GTD_er_bc%Re(I,J)=Diff(6)
-
+            GTD_er_bc%Re(I,J)=Diff(3)
             end do
         end do
+        !print*, GTD_er_bc%Re
     end subroutine GTD_compute_bc
     ! Main Algorithm
     subroutine GTD_compute()
       ! Calculate
+      A_=0d0
       do K=1,mes_D%pN
-        do J=0,i_Th-1
-          do I=0,i_pZ-1
-
+        do I=0,i_pZ-1
+          do J=0,i_Th-1
+            A_=A
+            ! A(0)=vel_Grr%Re(I,J,K)/d_dr
+            ! A(1)=vel_Gtr%Re(I,J,K)/d_dr
+            ! A(2)=vel_Gzr%Re(I,J,K)/d_dr
+            ! A(3)=vel_Grt%Re(I,J,K)/d_dr
+            ! A(4)=vel_Gtt%Re(I,J,K)/d_dr
+            ! A(5)=vel_Gzt%Re(I,J,K)/d_dr
+            ! A(6)=vel_Grz%Re(I,J,K)/d_dr
+            ! A(7)=vel_Gtz%Re(I,J,K)/d_dr
             A(0)=vel_Grr%Re(I,J,K)/d_dr
-            A(1)=vel_Gtr%Re(I,J,K)/d_dr
-            A(2)=vel_Gzr%Re(I,J,K)/d_dr
-            A(3)=vel_Grt%Re(I,J,K)/d_dr
-            A(4)=vel_Gtt%Re(I,J,K)/d_dr
-            A(5)=vel_Gzt%Re(I,J,K)/d_dr
-            A(6)=vel_Grz%Re(I,J,K)/d_dr
-            A(7)=vel_Gtz%Re(I,J,K)/d_dr
-            ! if (I==0 .and. J==0) print*, A
-
-            call gtd_eig_cfun(A,Diff)
-
+            A(1)=vel_Gzr%Re(I,J,K)/d_dr
+            A(2)=vel_Grz%Re(I,J,K)/d_dr
+            if (dabs(A(0))>2.5d0 .or. dabs(A(1))>3d0 .or. dabs(A(2))>3d0) print*,' Extrapolating GTD!', A
+            if (maxval(dabs(A_-A))/=0d0) then
+              ! call gtd_eig_cfun(A,Diff)
+              call gtd2d_libinter_cfun(A,Diff)
+            end if
+            ! GTD_Drr%Re(I,J,K)=Diff(0)
+            ! GTD_Drt%Re(I,J,K)=Diff(1)
+            ! GTD_Drz%Re(I,J,K)=Diff(2)
+            ! GTD_Dtt%Re(I,J,K)=Diff(3)
+            ! GTD_Dtz%Re(I,J,K)=Diff(4)
+            ! GTD_Dzz%Re(I,J,K)=Diff(5)
+            ! GTD_er%Re(I,J,K)=Diff(6)
+            ! GTD_et%Re(I,J,K)=Diff(7)
+            ! GTD_ez%Re(I,J,K)=Diff(8)
             GTD_Drr%Re(I,J,K)=Diff(0)
-            GTD_Drt%Re(I,J,K)=Diff(1)
-            GTD_Drz%Re(I,J,K)=Diff(2)
-            GTD_Dtt%Re(I,J,K)=Diff(3)
-            GTD_Dtz%Re(I,J,K)=Diff(4)
-            GTD_Dzz%Re(I,J,K)=Diff(5)
-            GTD_er%Re(I,J,K)=Diff(6)
-            GTD_et%Re(I,J,K)=Diff(7)
-            GTD_ez%Re(I,J,K)=Diff(8)
-            ! if (I==0 .and. J==0) print*, Diff
+            GTD_Drt%Re(I,J,K)=0d0
+            GTD_Drz%Re(I,J,K)=Diff(1)
+            GTD_Dtt%Re(I,J,K)=0d0
+            GTD_Dtz%Re(I,J,K)=0d0
+            GTD_Dzz%Re(I,J,K)=Diff(2)
+            GTD_er%Re(I,J,K)=Diff(3)
+            GTD_et%Re(I,J,K)=0d0
+            GTD_ez%Re(I,J,K)=Diff(4)
           end do
-          ! print*, 'Rank: ', mpi_rnk,'  J=', J
         end do
       end do
 #ifdef _MPI
@@ -107,13 +127,11 @@
       return
     end function
     subroutine GTD_precompute()
-
-      call gtd_eig_cfun_initialize()
-
+      ! call gtd_eig_cfun_initialize()
+      call gtd2d_libinter_cfun_initialize()
     end subroutine GTD_precompute
     subroutine GTD_closing()
-
-      call gtd_eig_cfun_terminate()
-
+      ! call gtd_eig_cfun_terminate()
+      call gtd2d_libinter_cfun_terminate()
     end subroutine GTD_closing
   end module GTD

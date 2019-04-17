@@ -30,10 +30,10 @@ COMPILER	= gfortran
 else
 COMPILER	= mpifort
 endif
-COMPFLAGS	= -ffree-line-length-none -x f95-cpp-input -c -O3 \
+COMPFLAGS	= -ffree-line-length-none -x f95-cpp-input -c -g -O3 \
 		  -I/usr/include \
                   #-C #-pg
-LIBS		= gtd_eig_cfun.a \
+LIBS		= gtd2d_libinter_cfun.a \
 		  -L/usr/lib \
 		  cheby.o -lfftw3 -llapack -lnetcdff \
 		  # -lblas -lcurl
@@ -43,6 +43,11 @@ endif
 all : 	$(MODSOBJ) $(PROGDIR)main.f90
 	$(COMPILER) $(COMPFLAGS) $(PROGDIR)main.f90
 	$(COMPILER) -o ./main.out main.o $(MODSOBJ) $(LIBS)
+
+debug: 	$(MODSOBJ) $(PROGDIR)main.f90
+	$(COMPILER) $(COMPFLAGS) $(PROGDIR)main.f90
+	$(COMPILER) -o ./main.out main.o $(MODSOBJ) $(LIBS)
+	gdb ./main.out
 
 install : main.out
 	if test ! -d $(INSTDIR); then mkdir -p $(INSTDIR); fi

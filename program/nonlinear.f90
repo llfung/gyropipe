@@ -146,7 +146,7 @@
       call tra_phys2spec(GTD_et, s)
       call var_spec2coll(s, GTD_et_col)
 
-      call var_coll_grad(GTD_er_col,GTD_et_col,GTD_ez_col,GTD_grade)
+      call var_coll_div(GTD_er_col,GTD_et_col,GTD_ez_col,GTD_grade)
 
       GTD_er%Re=DT_gradHr%Re/d_Pe-temp_gradr%Re/d_Pe_dm
       call tra_phys2spec(GTD_er, s)
@@ -160,7 +160,7 @@
       call tra_phys2spec(GTD_ez, s)
       call var_spec2coll(s, GTD_ez_col)
 
-      call var_coll_grad(GTD_er_col,GTD_et_col,GTD_ez_col,GTD_lapH)
+      call var_coll_div(GTD_er_col,GTD_et_col,GTD_ez_col,GTD_lapH)
 
       _loop_km_begin
          a = d_alpha*k * vel_U
@@ -183,11 +183,13 @@
    !-------------------------------------------------------------------------
       subroutine non_temperature_bc()
          call GTD_compute_bc()
-         if (mpi_rnk==_Nr) temp_bc%Re(:,:) = (d_Vs*d_Pe*GTD_er_bc%Re &
+         if (mpi_rnk==(_Nr-1)) temp_bc%Re(:,:) = (d_Vs*d_Pe*GTD_er_bc%Re &
                               -GTD_Drt_bc%Re*temp_gradt%Re(:,:,mes_D%pN) &
                               -GTD_Drz_bc%Re*temp_gradz%Re(:,:,mes_D%pN))/GTD_Drr_bc%Re
 
          call tra_phys2coll_bc(temp_bc,temp_bc_col)
+
+           ! print*, mpi_rnk, temp_bc_col%Re
 
       end subroutine non_temperature_bc
    !------------------------------------------------------------------------

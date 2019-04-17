@@ -166,7 +166,7 @@
 
          e=nf90_inq_varid(f,'dt', i)
          e=nf90_get_var(f,i, d)
-         if(d_timestep<0d0) tim_dt = d
+         if(d_timestep<0d0) tim_dt = min(d,1d-5)
          if(d_timestep>0d0) tim_dt = d_timestep
          e=nf90_inq_varid(f,'dtcor', i)
          if(e==nf90_noerr)  e=nf90_get_var(f,i, tim_corr_dt)
@@ -176,7 +176,7 @@
          call io_load_coll(f,'Ur',interp,N_,r,A,1, vel_ur)
          call io_load_coll(f,'Ut',interp,N_,r,A,1, vel_ut)
          call io_load_coll(f,'Uz',interp,N_,r,A,0, vel_uz)
-!         call io_load_coll(f,'T', interp,N_,r,A,0, temp_tau)
+         call io_load_coll(f,'T', interp,N_,r,A,0, temp_tau)
 
          deallocate(r)
 

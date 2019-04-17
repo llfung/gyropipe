@@ -91,7 +91,7 @@
     DOUBLE PRECISION, ALLOCATABLE :: er_bc_mul(:,:)
   contains
     subroutine GTD_compute_bc()
-      if (mpi_rnk/=_Nr) return
+      if (mpi_rnk/=(_Nr-1)) return
       K=mes_D%pN
         do J=0,i_Th-1
           do I=0,i_pZ-1

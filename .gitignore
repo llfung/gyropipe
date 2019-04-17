@@ -50,3 +50,4 @@ playground/*
 
 # GTD Static Library
 GTD_StaticLib/codegen/*
+GTD2D_lib/codegen/*

@@ -108,7 +108,7 @@
       type (coll) :: c
       ! TODO: Slim down the transformation of BC
       p%Re=0d0
-      if (mpi_rnk==_Nr) p%Re(:,:,i_pN)=pin%Re
+      if (mpi_rnk==(_Nr-1)) p%Re(:,:,mes_D%pN)=pin%Re
 
       call tra_phys2spec(p,  s1)
       call var_spec2coll(s1, c)

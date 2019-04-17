@@ -51,7 +51,8 @@
       temp_bc_col%Re=0d0
       temp_bc_col%Im=0d0
       if (mpi_rnk/=0) return
-      temp_tau%Re(:,0)=(1d0 - mes_D%r(:,2))*d_Pe_dm
+      !temp_tau%Re(:,0)=0d0
+      temp_tau%Re(:,0)=(- mes_D%r(:,2))*d_dr/d_Vs
     !  temp_T0  =  1d0 - mes_D%r(:,2)	! 1 - r^2
     !  temp_T0p = - 2d0 * mes_D%r(:,1)	! dT/dr
    end subroutine temp_precompute
@@ -62,17 +63,17 @@
 !------------------------------------------------------------------------
    subroutine temp_matrices()
       double precision :: d1, d2
-      integer :: j,nl,nr,n
+      integer :: nl,nr,n
       ! _loop_km_vars
 
 			! lhs matrices
       d1 =  1d0/tim_dt
-      d2 = -d_implicit/(d_Pe_dm)
+      d2 = -d_implicit/d_Pe_dm
       call tim_lumesh_init_mod(0,1,d1,d2, LD)
 
       			! timestepping matrices for rhs
       d1 =  1d0/tim_dt
-      d2 =  (1d0-d_implicit)/(d_Pe_dm)
+      d2 =  (1d0-d_implicit)/d_Pe_dm
       call tim_mesh_init(0,d1,d2, Lt)
 
       ! For B.C. at r=R
@@ -155,13 +156,13 @@
 !------------------------------------------------------------------------
 !  B.C. no-flux at r=1
 !------------------------------------------------------------------------
-  subroutine temp_tempbc(a)
-     type (coll), intent(inout) :: a
+  subroutine temp_tempbc(ain)
+     type (coll), intent(inout) :: ain
      integer :: n
 
      do n = 0, var_H%pH1
-        a%Re(i_N, n ) = temp_bc_col%Re(1,n)
-        a%Im(i_N, n ) = temp_bc_col%Im(1,n)
+        ain%Re(i_N, n ) = temp_bc_col%Re(1,n)
+        ain%Im(i_N, n ) = temp_bc_col%Im(1,n)
      end do
   end subroutine temp_tempbc
 
