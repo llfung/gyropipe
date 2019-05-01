@@ -12,7 +12,7 @@ persistent loadmat G21_mesh2 G12_mesh2 e1_array2 e2_array2 G12_mesh G11_mesh G21
         e1_array2=reshape(loadmat.e1_array(1,:,:),numel(loadmat.G12_loop),numel(loadmat.G21_loop));
         e2_array2=reshape(loadmat.e2_array(1,:,:),numel(loadmat.G12_loop),numel(loadmat.G21_loop));
     end
-    
+
 %% Get omega in (r,theta,z)
 Diffrz=zeros(5,1);
 Grz=reshape([Grz_flat -Grz_flat(1)],2,2);

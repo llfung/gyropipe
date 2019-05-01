@@ -51,3 +51,8 @@ playground/*
 # GTD Static Library
 GTD_StaticLib/codegen/*
 GTD2D_lib/codegen/*
+
+# ptp-sync
+**/.ptp-sync-folder
+.remote-sync.json
+.ptp-sync/**
