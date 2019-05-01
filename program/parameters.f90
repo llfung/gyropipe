@@ -20,13 +20,13 @@
    integer,          parameter :: i_Mp          = 1
 
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
-   double precision            :: d_Re          = 0.160428183d0
-   double precision            :: d_Ri          = 37.011016504d0
-   double precision, parameter :: d_Vs          = 0.785398163d0 ! Changes with flow rate, as always normalised by bulk flow
-   double precision, parameter :: d_dr          = 1.670529427d0
+   double precision            :: d_Re          = 0.128342546d0
+   double precision            :: d_Ri          = 73.250970164d0
+   double precision, parameter :: d_Vs          = 0.981747704d0 ! Changes with flow rate, as always normalised by bulk flow
+   double precision, parameter :: d_dr          = 2.088161784d0
    double precision            :: d_Pe          = 1d0/d_Vs/d_Vs*d_dr
    double precision            :: d_Pe_dm       = 1d0/d_Vs/d_Vs*d_dr
-   double precision            :: d_alpha       = 0.15d0
+   double precision            :: d_alpha       = 0.04d0
    logical,          parameter :: b_const_flux  = .true.
    logical,          parameter :: b_mirrorsym   = .false.
    logical,          parameter :: b_shiftrefl   = .false.
@@ -34,14 +34,14 @@
    double precision, parameter :: d_minE3d      = 1d-5
 
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
-   integer,          parameter :: i_save_rate1  = 1000!100
-   integer,          parameter :: i_save_rate2  = 100
-   integer,          parameter :: i_maxtstep    = 500000
+   integer,          parameter :: i_save_rate1  = 100!100
+   integer,          parameter :: i_save_rate2  = 10
+   integer,          parameter :: i_maxtstep    = 50000
    double precision, parameter :: d_maxt        = -1d0
    double precision, parameter :: d_cpuhours    = 1d99 !90d0
    double precision, parameter :: d_time        = 0d0 !-1d0
    double precision, parameter :: d_timestep    = -1d0 !0.05d0
-   double precision, parameter :: d_maxdt       = 0.05d0 !1d99
+   double precision, parameter :: d_maxdt       = 0.01d0 !1d99
    double precision, parameter :: d_dterr       = 1d-5 !1d99
    double precision, parameter :: d_courant     = 0.3d0
    double precision, parameter :: d_implicit    = 0.51d0

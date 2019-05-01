@@ -18,25 +18,26 @@ MODSOBJ		= io.o meshs.o mpi.o nonlinear.o parameters.o \
 
 ifeq (${FC},ifort)
 ifeq (${numcore},1)
-COMPILER	= ifort
+	COMPILER	= ifort
 else
-COMPILER	= mpiifort
+	COMPILER	= mpiifort
 endif
+
 COMPFLAGS	= -cpp -c -O3 -heap-arrays 1024 -mcmodel=medium -I/home/lsf212/netcdf_ifort/include
 LIBS = -mkl -L/home/lsf212/netcdf_ifort/lib cheby.o -lnetcdff
 else
 ifeq (${numcore},1)
-COMPILER	= gfortran
+	COMPILER	= gfortran
 else
-COMPILER	= mpifort
+	COMPILER	= mpifort
 endif
-COMPFLAGS	= -ffree-line-length-none -x f95-cpp-input -c -g -O3 \
-		  -I/usr/include \
-                  #-C #-pg
+COMPFLAGS	= -ffree-line-length-none -x f95-cpp-input -c -O3 -g \
+	  -I/usr/include \
+              #-C #-pg
 LIBS		= gtd2d_libinter_cfun.a \
-		  -L/usr/lib \
-		  cheby.o -lfftw3 -llapack -lnetcdff \
-		  # -lblas -lcurl
+	  -L/usr/lib \
+	  cheby.o -lfftw3 -llapack -lnetcdff \
+	  # -lblas -lcurl
 endif
 
 #------------------------------------------------------------------------
@@ -68,6 +69,8 @@ util : 	$(MODSOBJ) $(UTILDIR)/$(UTIL).f90
 run :
 	cp state.cdf.in $(INSTDIR)
 	mv $(INSTDIR) $(RUNDIR)
+	echo ${RUNDIR} | xclip 
+	ln -s $(CURDIR) $(RUNDIR)/gyropipe
 ifeq (${numcore},1)
 	(cd $(RUNDIR); nohup $(RUNDIR)/main.out > $(RUNDIR)/OUT.log 2> $(RUNDIR)/OUT.err &)
 else
@@ -86,15 +89,15 @@ runall :
 	make clean
 
 runutil :
-		make clean
-		make
-		make util
-		make install
-		make run
-		make clean
+	make clean
+	make
+	make util
+	make install
+	make run
+	make clean
 #------------------------------------------------------------------------
 clean :
-	rm -f *.o *.mod *.d *.il core *.out *.optrpt
+	rm -f *.o *.mod *.d *.il core *.out *.optrpt *.dat *.nf HOST RUNNING
 
 #------------------------------------------------------------------------
 io.o : $(PROGDIR)io.f90 temperature.o velocity.o nonlinear.o
@@ -108,13 +111,13 @@ mpi.o : $(PROGDIR)mpi.f90 parallel.h
 	$(COMPILER) $(COMPFLAGS) $(PROGDIR)mpi.f90
 
 nonlinear.o : $(PROGDIR)nonlinear.f90 temperature.o velocity.o GTD.o
-		$(COMPILER) $(COMPFLAGS) $(PROGDIR)nonlinear.f90
+	$(COMPILER) $(COMPFLAGS) $(PROGDIR)nonlinear.f90
 
 parameters.o : $(PROGDIR)parameters.f90 parallel.h
 	$(COMPILER) $(COMPFLAGS) $(PROGDIR)parameters.f90
 
 temperature.o : $(PROGDIR)temperature.f90 timestep.o transform.o velocity.o GTD.o
-		$(COMPILER) $(COMPFLAGS) $(PROGDIR)temperature.f90
+	$(COMPILER) $(COMPFLAGS) $(PROGDIR)temperature.f90
 
 timestep.o : $(PROGDIR)timestep.f90 variables.o
 	$(COMPILER) $(COMPFLAGS) $(PROGDIR)timestep.f90

@@ -20,6 +20,7 @@
     type (coll)    :: GTD_er_col, GTD_et_col, GTD_ez_col, GTD_grade, GTD_lapH ! See nonlinear>non_temperature
 
     INTEGER        :: I,J,K
+    LOGICAL        :: EXTRAPOLATE_FLAG
 
     ! DOUBLE PRECISION :: A(0:7), A_(0:7), Diff(0:8)
     DOUBLE PRECISION :: A(0:2), A_(0:2), Diff(0:4)
@@ -72,8 +73,11 @@
             A(0)=vel_Grr%Re(I,J,K)/d_dr
             A(1)=vel_Gzr%Re(I,J,K)/d_dr
             A(2)=vel_Grz%Re(I,J,K)/d_dr
-            if (dabs(A(0))>2.5d0 .or. dabs(A(1))>3d0 .or. dabs(A(2))>3d0) print*,' Extrapolating GTD!', A
-            if (maxval(dabs(A_-A))/=0d0) then
+            if ((dabs(A(0))>2.5d0 .or. dabs(A(1))>3d0 .or. dabs(A(2))>3d0) .and. .NOT.(EXTRAPOLATE_FLAG)) then
+		print*,' Extrapolating GTD!', A
+		EXTRAPOLATE_FLAG=.TRUE.
+            end if
+	    if (maxval(dabs(A_-A))/=0d0) then
               ! call gtd_eig_cfun(A,Diff)
               call gtd2d_libinter_cfun(A,Diff)
             end if
@@ -128,6 +132,7 @@
     end function
     subroutine GTD_precompute()
       ! call gtd_eig_cfun_initialize()
+	    EXTRAPOLATE_FLAG=.FALSE.
       call gtd2d_libinter_cfun_initialize()
     end subroutine GTD_precompute
     subroutine GTD_closing()
