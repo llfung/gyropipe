@@ -31,7 +31,7 @@ ifeq (${numcore},1)
 else
 	COMPILER	= mpifort
 endif
-COMPFLAGS	= -ffree-line-length-none -x f95-cpp-input -c -O3 -g \
+COMPFLAGS	= -ffree-line-length-none -x f95-cpp-input -c -O3\
 	  -I/usr/include \
               #-C #-pg
 LIBS		= gtd2d_libinter_cfun.a \
@@ -69,8 +69,8 @@ util : 	$(MODSOBJ) $(UTILDIR)/$(UTIL).f90
 run :
 	cp state.cdf.in $(INSTDIR)
 	mv $(INSTDIR) $(RUNDIR)
-	echo ${RUNDIR} | xclip 
-	ln -s $(CURDIR) $(RUNDIR)/gyropipe
+	ln -s $(CURDIR) $(RUNDIR)/gyropipe.ln
+	ln -sfn $(RUNDIR) ./rundir.ln
 ifeq (${numcore},1)
 	(cd $(RUNDIR); nohup $(RUNDIR)/main.out > $(RUNDIR)/OUT.log 2> $(RUNDIR)/OUT.err &)
 else
@@ -97,7 +97,7 @@ runutil :
 	make clean
 #------------------------------------------------------------------------
 clean :
-	rm -f *.o *.mod *.d *.il core *.out *.optrpt *.dat *.nf HOST RUNNING
+	rm -f *.o *.mod *.d *.il core *.out *.optrpt *.dat *.nf HOST RUNNING gyropipe.ln
 
 #------------------------------------------------------------------------
 io.o : $(PROGDIR)io.f90 temperature.o velocity.o nonlinear.o

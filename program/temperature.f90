@@ -28,8 +28,8 @@
    ! type (phys_bc) :: temp_bc_er
    type (coll_bc) :: temp_bc_col
 
-  ! double precision :: temp_T0(i_N) !temperature basic state T0 = 1 -r^2
-  ! double precision :: temp_T0p(i_N) !temperature gradient basic state dT/dr = -2r
+   double precision :: temp_T0(i_N) !temperature basic state T0 = 1 -r^2
+   double precision :: temp_T0p(i_N) !temperature gradient basic state dT/dr = -2r
    double precision ::  d_nint
 
    type (lumesh), private :: LD(0:i_pH1)!lhs matrix
@@ -50,6 +50,8 @@
       temp_bc%Re=0d0
       temp_bc_col%Re=0d0
       temp_bc_col%Im=0d0
+      temp_T0  = 0d0
+      temp_T0p = 0d0
       if (mpi_rnk/=0) return
       !temp_tau%Re(:,0)=0d0
       temp_tau%Re(:,0)=(- mes_D%r(:,2))*d_dr/d_Vs
@@ -163,7 +165,11 @@
      do n = 0, var_H%pH1
         ain%Re(i_N, n ) = temp_bc_col%Re(1,n)
         ain%Im(i_N, n ) = temp_bc_col%Im(1,n)
+!        ain%Re(1,0)=0d0
+!        ain%Im(1,0)=0d0
      end do
+     ! if (mpi_rnk/=0) return
+
   end subroutine temp_tempbc
 
 !*************************************************************************

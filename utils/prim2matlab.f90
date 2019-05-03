@@ -419,7 +419,7 @@
    implicit none
    character(200) :: path
    integer :: n, pthlen
-   integer :: e, f, i
+   integer :: e, f, ii
    double precision :: d
    
  9 format(A)
@@ -556,8 +556,8 @@
       
       if(fls==2) then
          write(cnum,'(I4.4)') fl
-         io_statefile = path(1:pthlen)//'state'//cnum//'.cdf.dat'   
-         print*,'loading '//path(1:pthlen)//'state'//cnum//'.cdf.dat'
+         io_statefile = path(1:pthlen)//'state'//cnum//'.nf'
+         print*,'loading '//path(1:pthlen)//'state'//cnum//'.nf'
       end if
       dtprev = tim_dt
       call io_load_state()

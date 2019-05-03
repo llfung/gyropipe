@@ -16,6 +16,7 @@
    type (spec), private :: s
 
    type (phys), private :: DT_gradHr,DT_gradHt,DT_gradHz
+   double precision, private :: p1_max,p2_max,p3_max
 
  contains
 
@@ -130,6 +131,9 @@
       p2%Re=-vel_t%Re-GTD_et%Re*d_Vs+DT_gradHt%Re/d_Pe
       p3%Re=-vel_z%Re-GTD_ez%Re*d_Vs+DT_gradHz%Re/d_Pe
 
+      p1_max=maxval(dabs(vel_r%Re)+dabs(DT_gradHr%Re/d_Pe))
+      p2_max=maxval(dabs(vel_t%Re)+dabs(DT_gradHt%Re/d_Pe))
+      p3_max=maxval(dabs(vel_z%Re)+dabs(DT_gradHz%Re/d_Pe))
       p%Re =   p1%Re*temp_gradr%Re  &
              + p2%Re*temp_gradt%Re  &
              + p3%Re*temp_gradz%Re
@@ -206,7 +210,7 @@
             n__ = n+mes_D%pNi-1
 
             if(n__==1) then
-               d = r(2) - r(1)
+               d = min(r(2) - r(1),r(1))
             else if(n__==i_N) then
                d = r(i_N) - r(i_N-1)
             else
@@ -214,19 +218,19 @@
             end if
             mx = maxval( dabs(vel_r%Re(:,:,n)) )
             if(mx/=0d0) dt(1) = min( dt(1), d/mx )
-            mx = maxval( dabs(p1%Re(:,:,n)) )
+            mx = p1_max+d_Vs
             if(mx/=0d0) dt(4) = min( dt(4), d/mx )
 
-            d = 2d0*d_PI/dble(i_Th*i_Mp) 		!---  *r_(n)? ---
+            d = min(2d0*d_PI/dble(i_Th*i_Mp) ,d)		!---  *r_(n)? ---
             mx = maxval( dabs(vel_t%Re(:,:,n)) )
             if(mx/=0d0) dt(2) = min( dt(2), d/mx )
-            mx = maxval( dabs(p2%Re(:,:,n)) )
+            mx = p2_max+d_Vs
             if(mx/=0d0) dt(5) = min( dt(5), d/mx )
 
-            d = 2d0*d_PI/(d_alpha*i_Z)
+            d = min(2d0*d_PI/(d_alpha*i_Z),d)
             mx = maxval( dabs(vel_z%Re(:,:,n) + vel_U(n__)) )
             if(mx/=0d0) dt(3) = min( dt(3), d/mx )
-            mx = maxval( dabs(p3%Re(:,:,n) + vel_U(n__)) )
+            mx =  dabs(vel_U(n__)) +d_Vs+p3_max
             if(mx/=0d0) dt(6) = min( dt(6), d/mx )
          end do
 

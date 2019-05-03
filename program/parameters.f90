@@ -15,7 +15,7 @@
    save
 
    integer,	         parameter :: i_N           = 60
-   integer,          parameter :: i_K           = 32
+   integer,          parameter :: i_K           = 16
    integer,          parameter :: i_M           = 1
    integer,          parameter :: i_Mp          = 1
 
@@ -26,7 +26,7 @@
    double precision, parameter :: d_dr          = 2.088161784d0
    double precision            :: d_Pe          = 1d0/d_Vs/d_Vs*d_dr
    double precision            :: d_Pe_dm       = 1d0/d_Vs/d_Vs*d_dr
-   double precision            :: d_alpha       = 0.04d0
+   double precision            :: d_alpha       = 0.1d0
    logical,          parameter :: b_const_flux  = .true.
    logical,          parameter :: b_mirrorsym   = .false.
    logical,          parameter :: b_shiftrefl   = .false.
@@ -34,15 +34,15 @@
    double precision, parameter :: d_minE3d      = 1d-5
 
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
-   integer,          parameter :: i_save_rate1  = 100!100
-   integer,          parameter :: i_save_rate2  = 10
-   integer,          parameter :: i_maxtstep    = 50000
+   integer,          parameter :: i_save_rate1  = 1000!100
+   integer,          parameter :: i_save_rate2  = 200
+   integer,          parameter :: i_maxtstep    = 1000000
    double precision, parameter :: d_maxt        = -1d0
    double precision, parameter :: d_cpuhours    = 1d99 !90d0
    double precision, parameter :: d_time        = 0d0 !-1d0
    double precision, parameter :: d_timestep    = -1d0 !0.05d0
-   double precision, parameter :: d_maxdt       = 0.01d0 !1d99
-   double precision, parameter :: d_dterr       = 1d-5 !1d99
+   double precision, parameter :: d_maxdt       = 1d-3 !1d99
+   double precision, parameter :: d_dterr       = 1d-6 !1d99
    double precision, parameter :: d_courant     = 0.3d0
    double precision, parameter :: d_implicit    = 0.51d0
    integer,          parameter :: d_dterr_transient_iter = 6

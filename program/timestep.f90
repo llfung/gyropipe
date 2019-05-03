@@ -127,16 +127,33 @@
                end do
             end do
    					! boundary condition
+!                if (mpi_rnk==0 .and. nh==0) then
+!                  open(53,file='A_bfore.txt')
+!                  do kk=1,3*i_KL+1
+!                    write(53,*) A(nh)%M(kk,:)
+!                  end do
+!                  write(53,*) mes_D%dr1(:,BC)
+!                  close(53)
+!                end if
                 do j = i_N-i_KL, i_N
                    A(nh)%M(2*i_KL+1+i_N-j,j) = mes_D%dr1(i_KL-i_N+j+1,BC)
                 end do
-                ! if (mpi_rnk==0 .and. nh==0) then
-                !   open(53,file='A.txt')
-                !   do kk=1,3*i_KL+1
-                !     write(53,*) A(nh)%M(kk,:)
-                !   end do
-                !   close(53)
-                ! end if
+                    ! BC for r=0
+!                if (mpi_rnk==0 .and. nh==0) then
+!                  do j = 1,i_KL+1
+!                    A(nh)%M(2*i_KL+2-j,j) = mes_D%dr0(j,0)
+!                  end do
+!                    A(nh)%M(2*i_KL+1,1)=1d0
+!                   do j = 2,i_KL+1
+!                    A(nh)%M(2*i_KL+2-j,j) = 0d0
+!                   end do
+!                  open(53,file='A_after.txt')
+!                  do kk=1,3*i_KL+1
+!                    write(53,*) A(nh)%M(kk,:)
+!                  end do
+!                  write(53,*) mes_D%dr0(:,0)
+!                  close(53)
+!                end if
 
             call dgbtrf(i_N,i_N,i_KL,i_KL,A(nh)%M,3*i_KL+1,A(nh)%ipiv,info)
             if(info /= 0) stop 'tim_lumesh_init'
