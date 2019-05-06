@@ -31,12 +31,13 @@
    logical,          parameter :: b_mirrorsym   = .false.
    logical,          parameter :: b_shiftrefl   = .false.
    logical,          parameter :: b_shiftrott   = .false.
+   logical,          parameter :: b_loadstate   = .false.
    double precision, parameter :: d_minE3d      = 1d-5
 
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
    integer,          parameter :: i_save_rate1  = 1000!100
    integer,          parameter :: i_save_rate2  = 200
-   integer,          parameter :: i_maxtstep    = 1000000
+   integer,          parameter :: i_maxtstep    = 50000
    double precision, parameter :: d_maxt        = -1d0
    double precision, parameter :: d_cpuhours    = 1d99 !90d0
    double precision, parameter :: d_time        = 0d0 !-1d0

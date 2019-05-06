@@ -137,9 +137,18 @@
       call  io_precompute()
       call GTD_precompute()
 
-!      if(mpi_rnk==0)  print*, 'loading state...'
-      tim_dt = 1d-6
-!      call io_load_state()
+      if (b_loadstate) then
+          if(mpi_rnk==0)  print*, 'loading state...'
+          tim_dt = 1d99
+          call io_load_state()
+      else
+          if (mpi_rnk==0)  print*, 'Using default initial condition...'
+          if (d_timestep>0) then
+            tim_dt=d_timestep
+          else
+            tim_dt = d_maxdt/1d4
+          end if
+      end if
       call vel_matrices()
       call temp_matrices()
 

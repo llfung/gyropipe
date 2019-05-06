@@ -52,7 +52,7 @@
             GTD_er_bc%Re(I,J)=Diff(3)
             end do
         end do
-        !print*, GTD_er_bc%Re
+
     end subroutine GTD_compute_bc
     ! Main Algorithm
     subroutine GTD_compute()
