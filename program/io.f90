@@ -14,7 +14,7 @@
 
    character(200)        :: io_statefile
    integer               :: io_save1, io_save2
-   integer,     private  :: io_KE, io_ID, io_dt, io_pt, io_fr
+   integer,     private  :: io_KE, io_ID, io_dt, io_pt, io_fr, io_nint
    type (coll), private  :: c1,c2,c3
 
  contains
@@ -27,10 +27,11 @@
       io_save1 = 0
       io_save2 = 0
       io_dt    = 10
-      io_KE    = 20
-      io_ID    = 21
+      io_KE    = 0
+      io_ID    = 0
       io_pt    = 0
-      io_fr    = 50
+      io_fr    = 0
+      io_nint = 60
    end subroutine io_precompute
 
 
@@ -45,6 +46,7 @@
       if(io_ID/=0)  open(io_ID,status=s,access=a, file='vel_totEID.dat')
       if(io_pt/=0)  open(io_pt,status=s,access=a, file='vel_point.dat')
       if(io_fr/=0)  open(io_fr,status=s,access=a, file='vel_friction.dat')
+      if(io_nint/=0)  open(io_nint,status=s,access=a, file='temp_nint.dat')
 !      s = 'old'
       a = 'append'
    end subroutine io_openfiles
@@ -60,6 +62,7 @@
       if(io_ID/=0) close(io_ID)
       if(io_pt/=0) close(io_pt)
       if(io_fr/=0) close(io_fr)
+      if(io_nint/=0) close(io_nint)
    end subroutine io_closefiles
 
 
@@ -82,6 +85,7 @@
          if(io_pt/=0) call io_write_pointvel()
          if(io_fr/=0) call io_write_friction()
          if(io_dt/=0 .and. d_timestep>0d0) call io_write_timestep()
+         if(io_nint/=0) call io_write_nint
          io_save2 = io_save2+1
       end if
 
@@ -715,6 +719,14 @@ end subroutine io_save_spectrum
          write(io_dt,10) tim_t, tim_corr_dt, tim_cfl_dt, tim_cfl_dir
       end if
    end subroutine io_write_timestep
+
+   subroutine io_write_nint()
+     DOUBLE PRECISION ::  d1
+     d1=dot_product(dexp(temp_tau%Re(:,0)),mes_D%intrdr)
+   11 format(3e28.20)
+      if(mpi_rnk/=0) return
+         write(io_nint,11) tim_t, d1, d1-d_nint
+   end subroutine io_write_nint
 
 
 !**************************************************************************

@@ -52,10 +52,14 @@
       temp_bc_col%Im=0d0
       temp_T0  = 0d0
       temp_T0p = 0d0
-      if (mpi_rnk/=0) return
-      !temp_tau%Re(:,0)=0d0
-      temp_tau%Re(:,0)=(- mes_D%r(:,2))*d_dr/d_Vs
-      d_nint = dot_product(dexp(temp_tau%Re(:,0)),mes_D%intrdr)
+
+      if (mpi_rnk==0) then
+        temp_tau%Re(:,0)=(- mes_D%r(:,2))*d_dr/d_Vs
+        d_nint = dot_product(dexp(temp_tau%Re(:,0)),mes_D%intrdr)
+      end if
+#ifdef _MPI
+      call MPI_BCAST(d_nint, 1, MPI_DOUBLE_PRECISION, 0, mpi_comm_world, mpi_er)
+#endif
     !  temp_T0  =  1d0 - mes_D%r(:,2)	! 1 - r^2
     !  temp_T0p = - 2d0 * mes_D%r(:,1)	! dT/dr
    end subroutine temp_precompute
@@ -117,7 +121,6 @@
          d2 = 2d0*(dot_product(dexp(temp_tau%Re(:,0)), mes_D%intrdr)-d_nint)
          d3 = -d2/d1 ! Need to work out how to compensate for exp(H) lost.
          temp_tau%Re(:,0) = dlog(dexp(temp_tau%Re(:,0)) + d3*Ti)
-         ! vel_Pr0 = vel_Pr0 + d3*d_Re/4d0
       end if
 
    end subroutine temp_adjustMean
