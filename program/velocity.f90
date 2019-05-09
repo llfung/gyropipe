@@ -39,7 +39,7 @@
    type (coll) :: vel_Nt
    type (coll) :: vel_Nz
    double precision :: vel_nu ! 1d0 by default. Only changed if utils used to change 'reference viscosity'
-   double precision :: vel_Pr0
+   double precision :: vel_Pr0 ! int vel_uz r dr /(-2)
    double precision :: vel_U(i_N)
    double precision :: vel_Up(i_N)
    double precision :: vel_Upp

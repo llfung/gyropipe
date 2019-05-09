@@ -55,6 +55,7 @@
       if (mpi_rnk/=0) return
       !temp_tau%Re(:,0)=0d0
       temp_tau%Re(:,0)=(- mes_D%r(:,2))*d_dr/d_Vs
+      d_nint = dot_product(dexp(temp_tau%Re(:,0)),mes_D%intrdr)
     !  temp_T0  =  1d0 - mes_D%r(:,2)	! 1 - r^2
     !  temp_T0p = - 2d0 * mes_D%r(:,1)	! dT/dr
    end subroutine temp_precompute
@@ -78,6 +79,7 @@
       d2 =  (1d0-d_implicit)/d_Pe_dm
       call tim_mesh_init(0,d1,d2, Lt)
 
+      call temp_adjustMean(0)
       ! For B.C. at r=R
       ! _loop_km_begin
       !   do j = 1-i_KL, i_N
@@ -92,6 +94,34 @@
       ! _loop_km_end
    end subroutine temp_matrices
 
+!------------------------------------------------------------------------
+!  adjust mean Temp; fix to d_nint
+!------------------------------------------------------------------------
+   subroutine temp_adjustMean(F)
+      integer, intent(in) :: F
+      double precision, save :: Ti(i_N), d1,d2,d3
+      integer :: info
+
+      if(mpi_rnk/=0) return
+
+      if(F==0) then
+         Ti(:)   = 1d0
+         Ti(i_N) = 0d0
+         call dgbtrs('N', i_N, i_KL, i_KL, 1, LD(0)%M, 3*i_KL+1,  &
+                     LD(0)%ipiv, Ti, i_N, info)
+         if(info/=0) stop 'temp_adjustMean: err 1'
+         d1 = 2d0*dot_product(Ti, mes_D%intrdr)
+         if(d1==0d0) stop 'temp_adjustMean: err 2'
+
+      else if(F==1) then
+         d2 = 2d0*(dot_product(dexp(temp_tau%Re(:,0)), mes_D%intrdr)-d_nint)
+         d3 = -d2/d1 ! Need to work out how to compensate for exp(H) lost.
+         temp_tau%Re(:,0) = dlog(dexp(temp_tau%Re(:,0)) + d3*Ti)
+         ! vel_Pr0 = vel_Pr0 + d3*d_Re/4d0
+      end if
+
+   end subroutine temp_adjustMean
+
 
 !------------------------------------------------------------------------
 !  Evaluate in physical space  grad(tau)
@@ -103,14 +133,14 @@
 
       call tra_coll2phys(temp_tau,temp_p)
 
-#ifdef _MPI
-
-        if(mpi_rnk==0) d_nint = dot_product(dexp(temp_tau%Re(:,0)),mes_D%intrdr)
-        call mpi_bcast(d_nint,1,mpi_double_precision,0,mpi_comm_world,mpi_er)
-
-#else
-      d_nint = dot_product(dexp(temp_tau%Re(:,0)),mes_D%intrdr)
-#endif
+!#ifdef _MPI
+!
+!        if(mpi_rnk==0) d_nint = dot_product(dexp(temp_tau%Re(:,0)),mes_D%intrdr)
+!        call mpi_bcast(d_nint,1,mpi_double_precision,0,mpi_comm_world,mpi_er)
+!
+!#else
+!      d_nint = dot_product(dexp(temp_tau%Re(:,0)),mes_D%intrdr)
+!#endif
    end subroutine temp_transform
 
 
@@ -129,6 +159,9 @@
             ! if (mpi_rnk==0) print*, 'before', temp_tau%Re(:,0)
       call tim_lumesh_invert(0,LD, temp_tau)
             ! if (mpi_rnk==0) print*, 'after', temp_tau%Re(:,0)
+
+      call temp_adjustMean(1)
+
       if(mpi_rnk==0)  &
          temp_tau%Im(:,0) = 0d0
 
@@ -165,10 +198,7 @@
      do n = 0, var_H%pH1
         ain%Re(i_N, n ) = temp_bc_col%Re(1,n)
         ain%Im(i_N, n ) = temp_bc_col%Im(1,n)
-!        ain%Re(1,0)=0d0
-!        ain%Im(1,0)=0d0
      end do
-     ! if (mpi_rnk/=0) return
 
   end subroutine temp_tempbc
 

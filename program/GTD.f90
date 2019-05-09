@@ -73,7 +73,7 @@
             A(0)=vel_Grr%Re(I,J,K)/d_dr
             A(1)=vel_Gzr%Re(I,J,K)/d_dr
             A(2)=vel_Grz%Re(I,J,K)/d_dr
-            if ((dabs(A(0))>2.5d0 .or. dabs(A(1))>3d0 .or. dabs(A(2))>3d0) .and. .NOT.(EXTRAPOLATE_FLAG)) then
+            if ((dabs(A(0))>2d0 .or. dabs(A(1))>2d0 .or. dabs(A(2))>5d0) .and. .NOT.(EXTRAPOLATE_FLAG)) then
 		print*,' Extrapolating GTD!', A
 		EXTRAPOLATE_FLAG=.TRUE.
             end if

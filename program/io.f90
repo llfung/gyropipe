@@ -173,6 +173,13 @@
          e=nf90_inq_varid(f,'dtcfl', i)
          if(e==nf90_noerr)  e=nf90_get_var(f,i, tim_cfl_dt)
 
+         e=nf90_inq_varid(f,'nint', i)
+         if(e==nf90_noerr)  e=nf90_get_var(f,i, d)
+         if(e==nf90_noerr) then
+            print*,' d_nint   :',d
+            d_nint=d
+         end if
+
          call io_load_coll(f,'Ur',interp,N_,r,A,1, vel_ur)
          call io_load_coll(f,'Ut',interp,N_,r,A,1, vel_ut)
          call io_load_coll(f,'Uz',interp,N_,r,A,0, vel_uz)
