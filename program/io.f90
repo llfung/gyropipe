@@ -180,7 +180,7 @@
          e=nf90_inq_varid(f,'nint', i)
          if(e==nf90_noerr)  e=nf90_get_var(f,i, d)
          if(e==nf90_noerr) then
-            print*,' d_nint   :',d
+            if (mpi_rnk==0) print*,' d_nint   :',d
             d_nint=d
          end if
 

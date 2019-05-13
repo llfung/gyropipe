@@ -438,23 +438,24 @@
    call  dx_precompute()
 ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-   print*, 'Enter output variable:'
-   print*, ' 1, u;'
-   print*, ' 2, curl(u);'
-   print*, ' 3, z . curl(u)  =  -Lap_h T = -T1'
-   print*, ' 4, z . curl curl(u)  =  Lap Lap_h P = P2'
-   print*, ' 5, <P2>_z  -->  h'
-   print*, ' 6, P2 - h  -->  P2^'
-   print*, ' 7, pressure'
-   print*, ' 8, lambda_2 -- vortex'
-   print*, ' 9, temperature'
-
-   read(*,*) var
-
-   print*, 'Substract mean profile?'
-   print*, ' 0, use total flow;  1, sub HPf;  2, set 00mode to zero;'
-   print*, ' 3, sub from meanprof file (not implemented for temperature!).'
-   read(*,*) submean
+   ! print*, 'Enter output variable:'
+   ! print*, ' 1, u;'
+   ! print*, ' 2, curl(u);'
+   ! print*, ' 3, z . curl(u)  =  -Lap_h T = -T1'
+   ! print*, ' 4, z . curl curl(u)  =  Lap Lap_h P = P2'
+   ! print*, ' 5, <P2>_z  -->  h'
+   ! print*, ' 6, P2 - h  -->  P2^'
+   ! print*, ' 7, pressure'
+   ! print*, ' 8, lambda_2 -- vortex'
+   ! print*, ' 9, temperature'
+   !
+   ! read(*,*) var
+   var=1
+   ! print*, 'Substract mean profile?'
+   ! print*, ' 0, use total flow;  1, sub HPf;  2, set 00mode to zero;'
+   ! print*, ' 3, sub from meanprof file (not implemented for temperature!).'
+   ! read(*,*) submean
+   submean=2
    if(submean==3) then
       print*, 'Enter filename (must have no header and same i_N):'
       read(*,9) path
@@ -465,28 +466,29 @@
       close(10)
    end if
 
-   print*, 'Shift z-frame?'
-   print*, ' 0, false;  1, detect puff frame;  2, z = a t + b'
-   print*, ' 3, read sz.dat file'
-   read(*,*) zshft
-   if(zshft==2) then
-      print*, ' Enter a, b:'
-      read(*,*) zshfta, zshftb
-   end if
-   if(zshft==1 .or. zshft==2 .or. zshft==3) then
-      print*, ' Enter shift data right zoffset:'
-      read(*,*) zoffset
-   end if
-   if(zshft==3) open(77,status='old',file='sz.dat')
-
-   print*, ' Enter shift data theta offset:'
-   read(*,*) toffset
-
-   print*, 'Enter output data domain:'
-   print*, '1, volume;  2, (r,th) cross-section;  3, (r,z) cross-section;'
-   print*, '4, (th,z) cylindrial section.'
-   read(*,*) ddom
-
+   ! print*, 'Shift z-frame?'
+   ! print*, ' 0, false;  1, detect puff frame;  2, z = a t + b'
+   ! print*, ' 3, read sz.dat file'
+   ! read(*,*) zshft
+   zshft=0
+   ! if(zshft==2) then
+   !    print*, ' Enter a, b:'
+   !    read(*,*) zshfta, zshftb
+   ! end if
+   ! if(zshft==1 .or. zshft==2 .or. zshft==3) then
+   !    print*, ' Enter shift data right zoffset:'
+   !    read(*,*) zoffset
+   ! end if
+   ! if(zshft==3) open(77,status='old',file='sz.dat')
+   !
+   ! print*, ' Enter shift data theta offset:'
+   ! read(*,*) toffset
+   toffset=0d0
+   ! print*, 'Enter output data domain:'
+   ! print*, '1, volume;  2, (r,th) cross-section;  3, (r,z) cross-section;'
+   ! print*, '4, (th,z) cylindrial section.'
+   ! read(*,*) ddom
+   ddom=3
    print*, 'i_N  =', i_N
    print*, 'i_Th =', i_Th
    print*, 'i_Z  =', i_Z
@@ -505,8 +507,9 @@
       zval2  = zval
       mat_nz = 1
    else if(ddom==3) then
-      print*, 'Enter th value in range [0,1] (mapped to [0,2pi]):'
-      read(*,*) thval
+      ! print*, 'Enter th value in range [0,1] (mapped to [0,2pi]):'
+      ! read(*,*) thval
+      thval=0d0
       thval = thval * 2d0*d_PI
    else if(ddom==4) then
       print*, 'Enter r value in range [0,1]:'
@@ -515,16 +518,18 @@
 
    if(var==1 .or. var==2) then
       mat_Ads = 3
-      print*, 'Enter ouput vectors:'
-      print*, '1, (Ax,Ay,Az);  2, (Ar,Ath,Az).'
-      read(*,*) dvec
+      ! print*, 'Enter ouput vectors:'
+      ! print*, '1, (Ax,Ay,Az);  2, (Ar,Ath,Az).'
+      ! read(*,*) dvec
+      dvec=2
    else
       mat_Ads = 1
       dvec    = 2
    end if
 
-   print*, 'Multiple files?:  1, single file;  2, series'
-   read(*,*) fls
+   ! print*, 'Multiple files?:  1, single file;  2, series'
+   ! read(*,*) fls
+   fls=2
    if(fls==1) then
       print*, 'Enter state file:'
       read(*,9) io_statefile
@@ -534,7 +539,8 @@
    else
       fls = 2
       print*, 'Enter path to files:'
-      read(*,9) path
+      ! read(*,9) path
+      path='./'
       pthlen = 1
       do while(path(pthlen+1:pthlen+1)/=' ')
          pthlen = pthlen+1
@@ -582,17 +588,156 @@
 
    end do
 
-   ! write(*,*) 'writing to mat_maxmin:'
-   ! write(*,*) 'max: ', (maxA(n), n=1,mat_Ads)
-   ! write(*,*) 'min: ', (minA(n), n=1,mat_Ads)
-   ! write(11,*) '# data max:', (maxA(n), n=1,mat_Ads)
-   ! write(11,*) '# data min:', (minA(n), n=1,mat_Ads)
-   ! write(11,*) '# d_alpha : ',d_alpha
-   ! write(11,*) '# i_Mp : ',i_Mp
-   ! write(11,*) '# i_N : ', i_N
-   ! write(11,*) '# i_Th: ', i_Th
-   ! write(11,*) '# i_Z : ', i_Z
-   ! close(11)
+   ! print*, 'Enter output variable:'
+   ! print*, ' 1, u;'
+   ! print*, ' 2, curl(u);'
+   ! print*, ' 3, z . curl(u)  =  -Lap_h T = -T1'
+   ! print*, ' 4, z . curl curl(u)  =  Lap Lap_h P = P2'
+   ! print*, ' 5, <P2>_z  -->  h'
+   ! print*, ' 6, P2 - h  -->  P2^'
+   ! print*, ' 7, pressure'
+   ! print*, ' 8, lambda_2 -- vortex'
+   ! print*, ' 9, temperature'
+   !
+   ! read(*,*) var
+   var=9
+   ! print*, 'Substract mean profile?'
+   ! print*, ' 0, use total flow;  1, sub HPf;  2, set 00mode to zero;'
+   ! print*, ' 3, sub from meanprof file (not implemented for temperature!).'
+   ! read(*,*) submean
+   submean=0
+   if(submean==3) then
+      print*, 'Enter filename (must have no header and same i_N):'
+      read(*,9) path
+      open(10,status='old',file=path)
+      do n = 1, i_N
+         read(10,*) d, velprof(n)
+      end do
+      close(10)
+   end if
+
+   ! print*, 'Shift z-frame?'
+   ! print*, ' 0, false;  1, detect puff frame;  2, z = a t + b'
+   ! print*, ' 3, read sz.dat file'
+   ! read(*,*) zshft
+   zshft=0
+   ! if(zshft==2) then
+   !    print*, ' Enter a, b:'
+   !    read(*,*) zshfta, zshftb
+   ! end if
+   ! if(zshft==1 .or. zshft==2 .or. zshft==3) then
+   !    print*, ' Enter shift data right zoffset:'
+   !    read(*,*) zoffset
+   ! end if
+   ! if(zshft==3) open(77,status='old',file='sz.dat')
+   !
+   ! print*, ' Enter shift data theta offset:'
+   ! read(*,*) toffset
+   toffset=0d0
+   ! print*, 'Enter output data domain:'
+   ! print*, '1, volume;  2, (r,th) cross-section;  3, (r,z) cross-section;'
+   ! print*, '4, (th,z) cylindrial section.'
+   ! read(*,*) ddom
+   ddom=3
+   print*, 'i_N  =', i_N
+   print*, 'i_Th =', i_Th
+   print*, 'i_Z  =', i_Z
+   print*, 'L    =', 2d0*d_PI/d_alpha
+
+   if(ddom==1) then
+      print*, 'Enter range z1 to z2, each in range [0,L]:'
+      read(*,*) zval, zval2
+      print*, 'Enter nx, ny, nz:'
+      read(*,*) mat_nx, mat_ny, mat_nz
+   else if(ddom==2) then
+      print*, 'Enter z value in range [0,L]:'
+      read(*,*) zval
+      print*, 'Enter nx, ny:'
+      read(*,*) mat_nx, mat_ny
+      zval2  = zval
+      mat_nz = 1
+   else if(ddom==3) then
+      ! print*, 'Enter th value in range [0,1] (mapped to [0,2pi]):'
+      ! read(*,*) thval
+      thval=0d0
+      thval = thval * 2d0*d_PI
+   else if(ddom==4) then
+      print*, 'Enter r value in range [0,1]:'
+      read(*,*) rval
+   end if
+
+   if(var==1 .or. var==2) then
+      mat_Ads = 3
+      ! print*, 'Enter ouput vectors:'
+      ! print*, '1, (Ax,Ay,Az);  2, (Ar,Ath,Az).'
+      ! read(*,*) dvec
+      dvec=2
+   else
+      mat_Ads = 1
+      dvec    = 2
+   end if
+
+   ! print*, 'Multiple files?:  1, single file;  2, series'
+   ! read(*,*) fls
+   fls=2
+   if(fls==1) then
+      print*, 'Enter state file:'
+      read(*,9) io_statefile
+      ffrst = 1
+      flast = 1
+      fstep = 1
+   else
+      fls = 2
+      ! print*, 'Enter path to files:'
+      ! read(*,9) path
+      path='./'
+      pthlen = 1
+      do while(path(pthlen+1:pthlen+1)/=' ')
+         pthlen = pthlen+1
+      end do
+      ! print*, 'Enter file numbers first,last,step:'
+      ! read(*,*) ffrst, flast, fstep
+   end if
+
+   tim_dt = 0.01d0
+   call vel_matrices()
+
+   maxA = -1d99
+   minA =  1d99
+
+!- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   ! open(11,status='unknown',file='mat_maxmin')
+
+   do fl = ffrst, flast, fstep
+
+      if(fls==2) then
+         write(cnum,'(I4.4)') fl
+         io_statefile = path(1:pthlen)//'state'//cnum//'.nf'
+         print*,'loading '//path(1:pthlen)//'state'//cnum//'.nf'
+      end if
+      dtprev = tim_dt
+      call io_load_state()
+      print*, 'processing...'
+      write(*,'(a5, i4.4, a5, es16.8)') 'fl = ', fl, ' t = ', tim_t
+
+      call dx_preparedata()
+
+      if(ddom==1 .or. ddom==2) then
+         call dx_volume()
+      else if(ddom==3) then
+         call dx_rz_crsect()
+      else if(ddom==4) then
+         call dx_thz_cylsect()
+      end if
+
+      call dx_dump()
+      call dx_deletedata()
+
+      if(fls==2)  write(11,'(I4,6e16.8)') fl,  &
+         (maxA_(n), n=1,mat_Ads), (minA_(n), n=1,mat_Ads)
+
+   end do
+
 
 !*************************************************************************
  END PROGRAM ASH2DX
