@@ -39,14 +39,14 @@
 !  Open files written to every ... steps runtime
 !--------------------------------------------------------------------------
    subroutine io_openfiles()
-      character(10), save :: s = 'unknown', a = 'sequential'
+      character(10), save :: a = 'sequential'
       if(mpi_rnk/=0) return
-      if(io_dt/=0)  open(io_dt,status=s,access=a, file='tim_step.dat')
-      if(io_KE/=0)  open(io_KE,status=s,access=a, file='vel_energy.dat')
-      if(io_ID/=0)  open(io_ID,status=s,access=a, file='vel_totEID.dat')
-      if(io_pt/=0)  open(io_pt,status=s,access=a, file='vel_point.dat')
-      if(io_fr/=0)  open(io_fr,status=s,access=a, file='vel_friction.dat')
-      if(io_nint/=0)  open(io_nint,status=s,access=a, file='temp_nint.dat')
+      if(io_dt/=0)  open(io_dt,access=a, file='tim_step.dat')
+      if(io_KE/=0)  open(io_KE,access=a, file='vel_energy.dat')
+      if(io_ID/=0)  open(io_ID,access=a, file='vel_totEID.dat')
+      if(io_pt/=0)  open(io_pt,access=a, file='vel_point.dat')
+      if(io_fr/=0)  open(io_fr,access=a, file='vel_friction.dat')
+      if(io_nint/=0)  open(io_nint,access=a, file='temp_nint.dat')
 !      s = 'old'
       a = 'append'
    end subroutine io_openfiles
@@ -75,7 +75,7 @@
          call io_save_state()
          ! call io_save_spectrum(1)
          ! call io_save_spectrum(2)
-         call io_save_meanprof()
+         !call io_save_meanprof()
          io_save1 = io_save1+1
       endif
 
@@ -372,7 +372,7 @@
          e=nf90_put_var(f, dt, tim_dt)
          e=nf90_put_var(f, dtcor, tim_corr_dt)
          e=nf90_put_var(f, dtcfl, tim_cfl_dt)
-         d_nint = dot_product(dexp(temp_tau%Re(:,0)),mes_D%intrdr)
+         !d_nint = dot_product(dexp(temp_tau%Re(:,0)),mes_D%intrdr)
          e=nf90_put_var(f, nint, d_nint)
       end if
 

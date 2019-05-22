@@ -16,7 +16,7 @@
    type (phys) :: temp_gradt
    type (phys) :: temp_gradz
    type (phys) :: temp_p   !temperature perturbation (physical)
-   type (coll) :: temp_tau !temperature perturbation
+   type (coll) :: temp_tau ! , temp_tau_ !temperature perturbation
    type (coll) :: temp_N !nonlinear terms temperature eq temp_n = -u.grad(tau)
 
 
@@ -33,10 +33,12 @@
    double precision ::  d_nint
 
    type (lumesh), private :: LD(0:i_pH1)!lhs matrix
+   ! type (mesh),   private :: LDmul(0:i_pH1)!lhs matrix
    type (mesh),   private :: Lt(0:i_pH1) !rhs matrix for timestepping
    type (coll),   private :: N_, T_ !predictor
 
    type (coll), private :: c1,c2,c3
+   type (coll) :: temp_gradr_coll
    type (phys), private :: p
    type (spec), private :: s
 
@@ -129,10 +131,16 @@
 !------------------------------------------------------------------------
 !  Evaluate in physical space  grad(tau)
 !------------------------------------------------------------------------
+   ! subroutine temp_transform_gradr()
+   !  !  type (coll) :: tempora
+   !  ! call tim_meshmult(0,LDmul,temp_tau,tempora,temp_gradr_coll)
+   !
+   !  call var_coll_grad(temp_tau, temp_gradr_coll,c2,c3)
+   ! end subroutine temp_transform_gradr
    subroutine temp_transform()
 
-      call var_coll_grad(temp_tau, c1,c2,c3)
-      call tra_coll2phys(c1,temp_gradr, c2,temp_gradt, c3,temp_gradz)
+      call var_coll_grad(temp_tau, temp_gradr_coll,c2,c3)
+      call tra_coll2phys(temp_gradr_coll,temp_gradr, c2,temp_gradt, c3,temp_gradz)
 
       call tra_coll2phys(temp_tau,temp_p)
 
@@ -151,13 +159,13 @@
 !  Advance equations one timestep.
 !------------------------------------------------------------------------
    subroutine temp_step()
-				    ! get rhs = A u_ + N
+            ! get rhs = A u_ + N
       call tim_meshmult(0,Lt,T_,temp_N, temp_tau) !tim_meshmult(S,A,b,c, d)
-						!  multiply  d = A b + c
-						!  S=0, b even for m even; S=1, b odd for m even
+            !  multiply  d = A b + c
+            !  S=0, b even for m even; S=1, b odd for m even
 
       call temp_tempbc(temp_tau)
-        		! invert
+            ! invert
             ! Modify LD to BC need (LD=LD_original*Drr+Drt*im+Drz*ialpha)
             ! if (mpi_rnk==0) print*, 'before', temp_tau%Re(:,0)
       call tim_lumesh_invert(0,LD, temp_tau)
@@ -201,6 +209,8 @@
      do n = 0, var_H%pH1
         ain%Re(i_N, n ) = temp_bc_col%Re(1,n)
         ain%Im(i_N, n ) = temp_bc_col%Im(1,n)
+        ! ain%Re(i_N, n ) = 0d0
+        ! ain%Im(i_N, n ) = 0d0
      end do
 
   end subroutine temp_tempbc

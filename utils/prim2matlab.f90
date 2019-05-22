@@ -577,8 +577,8 @@
       call dx_dump()
       call dx_deletedata()
 
-      if(fls==2)  write(11,'(I4,6e16.8)') fl,  &
-         (maxA_(n), n=1,mat_Ads), (minA_(n), n=1,mat_Ads)
+      ! if(fls==2)  write(11,'(I4,6e16.8)') fl,  &
+      !    (maxA_(n), n=1,mat_Ads), (minA_(n), n=1,mat_Ads)
 
    end do
 

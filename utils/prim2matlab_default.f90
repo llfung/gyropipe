@@ -583,8 +583,8 @@
       call dx_dump()
       call dx_deletedata()
 
-      if(fls==2)  write(11,'(I4,6e16.8)') fl,  &
-         (maxA_(n), n=1,mat_Ads), (minA_(n), n=1,mat_Ads)
+      ! if(fls==2)  write(11,'(I4,6e16.8)') fl,  &
+      !    (maxA_(n), n=1,mat_Ads), (minA_(n), n=1,mat_Ads)
 
    end do
 
@@ -605,7 +605,7 @@
    ! print*, ' 0, use total flow;  1, sub HPf;  2, set 00mode to zero;'
    ! print*, ' 3, sub from meanprof file (not implemented for temperature!).'
    ! read(*,*) submean
-   submean=0
+   submean=2
    if(submean==3) then
       print*, 'Enter filename (must have no header and same i_N):'
       read(*,9) path

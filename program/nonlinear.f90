@@ -187,19 +187,35 @@
    !-------------------------------------------------------------------------
    !  nonlinear terms for the tempertaure
    !-------------------------------------------------------------------------
-      subroutine non_temperature_bc()
-         call GTD_compute_bc()
-         if (mpi_rnk==(_Nr-1)) temp_bc%Re(:,:) = (d_Vs*d_Pe*GTD_er_bc%Re &
+      subroutine non_temperature_bc(F)
+        integer, intent(in) :: F
+        if (F==0) call GTD_compute_bc()
+        if (mpi_rnk==(_Nr-1)) temp_bc%Re(:,:) = (d_Vs*d_Pe*GTD_er_bc%Re &
                               -GTD_Drt_bc%Re*temp_gradt%Re(:,:,mes_D%pN) &
                               -GTD_Drz_bc%Re*temp_gradz%Re(:,:,mes_D%pN))/GTD_Drr_bc%Re
 
          call tra_phys2coll_bc(temp_bc,temp_bc_col)
+         !if (mpi_rnk==0) print*, 'BC: ', F, temp_bc_col%Re
 
            ! print*, mpi_rnk, temp_bc_col%Re
 
       end subroutine non_temperature_bc
+      ! subroutine non_tempbc_eval(gradr_in)
+      !   type (coll),intent(in) :: gradr_in
+      !   type (coll_bc) :: bc_eval
+      !   integer :: n
+      !   call non_temperature_bc(1)
+      !   if (mpi_rnk/=0) return
+      !   do n = 0, var_H%pH1
+      !     bc_eval%Re(1,n)=temp_bc_col%Re(1,n)-gradr_in%Re(i_N,n)
+      !     bc_eval%Im(1,n)=temp_bc_col%Im(1,n)-gradr_in%Im(i_N,n)
+      !   end do
+      !   print*, mpi_rnk, tim_it, temp_bc_col%Re(1,:)
+      !   print*, mpi_rnk, tim_it, gradr_in%Re(i_N,:)
+      !   print*, mpi_rnk, tim_it, (bc_eval%Re**2d0+bc_eval%Im**2d0)
+      ! end subroutine non_tempbc_eval
    !------------------------------------------------------------------------
-   !  get cfl max dt due to flow field (TODO: GTD updates)
+   !  get cfl max dt due to flow field
    !------------------------------------------------------------------------
       subroutine non_maxtstep()
          double precision :: d,mx, dt(6),dt_(6), r(i_N)

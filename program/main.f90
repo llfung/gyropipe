@@ -45,7 +45,7 @@
       call io_write2files()     ! I/O files
       call vel_predictor()      ! vel_step() called inside (the main stepping algorithm)
          call vel_transform_bc()
-         call non_temperature_bc()
+         call non_temperature_bc(0)
       call temp_predictor()
       tim_it = 1
                    ! Corrector Step iteration
@@ -57,8 +57,11 @@
          call var_null(2)       ! where you put util()
          call vel_corrector()   ! vel_step() called inside (the main stepping algorithm)
            call vel_transform_bc()
-           call non_temperature_bc()
+           call non_temperature_bc(0)
          call temp_corrector()
+
+         ! call temp_transform()
+
          call tim_check_cgce()  ! check if we can exit corrector iter. If true, tim_it=0.
       end do
 
