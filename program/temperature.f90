@@ -16,7 +16,7 @@
    type (phys) :: temp_gradt
    type (phys) :: temp_gradz
    type (phys) :: temp_p   !temperature perturbation (physical)
-   type (coll) :: temp_tau ! , temp_tau_ !temperature perturbation
+   type (coll) :: temp_tau , temp_tau_ !,temp_tau_test !temperature perturbation
    type (coll) :: temp_N !nonlinear terms temperature eq temp_n = -u.grad(tau)
 
 
@@ -132,10 +132,12 @@
 !  Evaluate in physical space  grad(tau)
 !------------------------------------------------------------------------
    ! subroutine temp_transform_gradr()
-   !  !  type (coll) :: tempora
-   !  ! call tim_meshmult(0,LDmul,temp_tau,tempora,temp_gradr_coll)
-   !
-   !  call var_coll_grad(temp_tau, temp_gradr_coll,c2,c3)
+   ! !   type (coll) :: tempora
+   ! !   tempora%Re(:,:)=0d0
+   ! !   tempora%Im(:,:)=0d0
+   ! !  call tim_meshmult(0,LDmul,temp_tau,tempora,temp_gradr_coll)
+   ! !
+   !   call var_coll_grad(temp_tau, temp_gradr_coll,c2,c3)
    ! end subroutine temp_transform_gradr
    subroutine temp_transform()
 
@@ -165,6 +167,7 @@
             !  S=0, b even for m even; S=1, b odd for m even
 
       call temp_tempbc(temp_tau)
+      ! call var_coll_copy(temp_tau,temp_tau_test)
             ! invert
             ! Modify LD to BC need (LD=LD_original*Drr+Drt*im+Drz*ialpha)
             ! if (mpi_rnk==0) print*, 'before', temp_tau%Re(:,0)
@@ -173,7 +176,7 @@
 
       call temp_adjustMean(1)
 
-      if(mpi_rnk==0)  &
+      if(mpi_rnk/=0)  return
          temp_tau%Im(:,0) = 0d0
 
    end subroutine temp_step
@@ -195,8 +198,11 @@
    subroutine temp_corrector()
 
       call tim_nlincorr(N_, temp_N)
+      call var_coll_copy(temp_tau, temp_tau_)
       call temp_step()
-
+      call var_coll_sub(temp_tau, temp_tau_)
+      ! if (mpi_rnk==0) print*, tim_it, temp_tau_%Re(:,0)
+      call tim_measurecorr_scalar(temp_tau_) ! Calculate tim_dterr
    end subroutine temp_corrector
 
 !------------------------------------------------------------------------
@@ -207,14 +213,33 @@
      integer :: n
 
      do n = 0, var_H%pH1
-        ain%Re(i_N, n ) = temp_bc_col%Re(1,n)
-        ain%Im(i_N, n ) = temp_bc_col%Im(1,n)
+        ain%Re(i_N, n ) = temp_bc_col%Re(1,n)/tim_dt
+        ain%Im(i_N, n ) = temp_bc_col%Im(1,n)/tim_dt
         ! ain%Re(i_N, n ) = 0d0
         ! ain%Im(i_N, n ) = 0d0
      end do
 
   end subroutine temp_tempbc
-
+!------------------------------------------------------------------------
+!  B.C. no-flux at r=1 check
+!------------------------------------------------------------------------
+  subroutine temp_check_bc()
+    double precision :: dterr, d
+    integer :: n
+    dterr = 0d0
+    do n = 0, var_H%pH1
+       dterr=max(dterr, &
+       ((temp_gradr_coll%Re(i_N, n ) - temp_bc_col%Re(1,n))**2d0 + &
+       (temp_gradr_coll%Im(i_N, n ) - temp_bc_col%Im(1,n))**2d0 ) )!/ &
+       !(temp_bc_col%Re(1,n)**2d0+temp_bc_col%Im(1,n)**2d0))
+    end do
+#ifdef _MPI
+      call mpi_allreduce(dterr, d, 1, mpi_double_precision,  &
+         mpi_max, mpi_comm_world, mpi_er)
+      dterr = d
+#endif
+    tim_dterr_bc=dsqrt(dterr)
+  end subroutine temp_check_bc
 !*************************************************************************
  end module temperature
 !*************************************************************************

@@ -11,7 +11,7 @@
 
    double precision :: tim_t
    double precision :: tim_dt
-   double precision :: tim_dterr
+   double precision :: tim_dterr, tim_dterr_scalar, tim_dterr_bc
    integer          :: tim_it
    integer          :: tim_step
    double precision :: tim_corr_dt
@@ -30,6 +30,8 @@
       tim_t       = d_time     ! Start time. If <0, use state.cdf.in time.
       tim_dt      = d_timestep ! Will be overwritten in io_load_state()
       tim_dterr   = 0d0
+      tim_dterr_scalar   = 0d0
+      tim_dterr_bc = 0d0
       tim_it      = 0
       tim_step    = 0
       tim_corr_dt = 0d0
@@ -107,6 +109,7 @@
          integer,          intent(in)  :: PM,BC
          double precision, intent(in)  :: c1,c2
          type (lumesh),    intent(out) :: A(0:i_pH1)
+         ! type (mesh),    intent(out) :: Amul(0:i_pH1)
          double precision :: d(i_N)
          integer :: info, n,j, S,kk
          _loop_km_vars
@@ -136,7 +139,7 @@
 !                  close(53)
 !                end if
                 do j = i_N-i_KL, i_N
-                   A(nh)%M(2*i_KL+1+i_N-j,j) = mes_D%dr1(i_KL-i_N+j+1,BC)
+                   A(nh)%M(2*i_KL+1+i_N-j,j) = mes_D%dr1(i_KL-i_N+j+1,BC)*c1
                 end do
                     ! BC for r=0
 !                if (mpi_rnk==0 .and. nh==0) then
@@ -154,7 +157,7 @@
 !                  write(53,*) mes_D%dr0(:,0)
 !                  close(53)
 !                end if
-
+                ! Amul(nh)%M(1:2*i_KL+1, 1:i_N)=A(nh)%M(i_KL+1:3*i_KL+1,1:i_N)
             call dgbtrf(i_N,i_N,i_KL,i_KL,A(nh)%M,3*i_KL+1,A(nh)%ipiv,info)
             if(info /= 0) stop 'tim_lumesh_init'
          _loop_km_end
@@ -275,9 +278,26 @@
          mpi_max, mpi_comm_world, mpi_er)
       dterr = d
 #endif
+      ! if (mpi_rnk==0) print*,  'vector:' , dterr
       tim_dterr = max(tim_dterr,dsqrt(dterr))
    end subroutine tim_measurecorr
-
+   subroutine tim_measurecorr_scalar(c1)
+      type (coll), intent(in)    :: c1
+      double precision :: dterr, d
+      integer :: nh
+      dterr = 0d0
+      do nh = 0, var_H%pH1
+         dterr = max(dterr,  &
+            maxval( c1%Re(:,nh)*c1%Re(:,nh) + c1%Im(:,nh)*c1%Im(:,nh)) )
+      end do
+#ifdef _MPI
+      call mpi_allreduce(dterr, d, 1, mpi_double_precision,  &
+         mpi_max, mpi_comm_world, mpi_er)
+      dterr = d
+#endif
+      ! if (mpi_rnk==0) print*, 'scalar:' , dterr
+      tim_dterr_scalar = max(tim_dterr_scalar,dsqrt(dterr))
+   end subroutine tim_measurecorr_scalar
 
 !-------------------------------------------------------------------------
 !  check for convergence via the 2-norm of the correction
@@ -313,16 +333,24 @@
       else if(tim_dterr>d_dterr) then
          lasterr = tim_dterr
          tim_it = tim_it + 1
+      else if(tim_dterr_scalar>d_dterr_scalar) then
+        ! print*, tim_it, 'temp_dterr: ', tim_dterr_scalar
+         tim_it = tim_it + 1
+      ! else if(tim_dterr_bc>d_dterr_bc .and. tim_step>3) then
+      !    ! print*, tim_it, 'bc_dterr: ', tim_dterr_bc
+      !    tim_it = tim_it + 1
       else
               ! if (mpi_rnk==0) print*, tim_it
          if(mpi_rnk==0 .and. modulo(tim_step,i_save_rate2)==0) then
             if(d_timestep> 0d0) print*,' step=',tim_step,' its=',tim_it
-            if(d_timestep<=0d0) print*,' step=',tim_step,' dt=',real(tim_dt)
+            if(d_timestep<=0d0) print*,' step=',tim_step,' its=',tim_it,' dt=',real(tim_dt)
+            print*, 'temp_dterr: ', tim_dterr_scalar
+            print*, 'bc_dterr: ', tim_dterr_bc
          end if
          tim_it = 0
       end if
       tim_dterr = 0d0
-
+      tim_dterr_scalar =0d0
    end subroutine tim_check_cgce
 
 

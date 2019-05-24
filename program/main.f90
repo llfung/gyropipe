@@ -48,10 +48,18 @@
          call non_temperature_bc(0)
       call temp_predictor()
       tim_it = 1
+
+      call vel_transform()
+      call temp_transform()
                    ! Corrector Step iteration
       do while(tim_it/=0)
-         call vel_transform()
-         call temp_transform()
+        ! call temp_transform_gradr()
+        ! if (mpi_rnk==0) then
+        !   print*, tim_it, temp_gradr_coll%Re(:,0)
+        !   print*, tim_it, temp_tau_test%Re(:,0)
+        !   print*, tim_it, temp_gradr_coll%Re(:,0)-temp_tau_test%Re(:,0)
+        ! end if
+
          call non_velocity()
          call non_temperature()
          call var_null(2)       ! where you put util()
@@ -60,8 +68,10 @@
            call non_temperature_bc(0)
          call temp_corrector()
 
-         ! call temp_transform()
-
+         call vel_transform()
+         call temp_transform()
+         call non_temperature_bc(1)
+         call temp_check_bc()
          call tim_check_cgce()  ! check if we can exit corrector iter. If true, tim_it=0.
       end do
 

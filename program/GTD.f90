@@ -57,6 +57,8 @@
     ! Main Algorithm
     subroutine GTD_compute()
       ! Calculate
+      ! print*, maxval(vel_Grz%Re/d_dr)
+      ! print*, minval(vel_Grz%Re/d_dr)
       A_=0d0
       do K=1,mes_D%pN
         do I=0,i_pZ-1
@@ -73,7 +75,7 @@
             A(0)=vel_Grr%Re(I,J,K)/d_dr
             A(1)=vel_Gzr%Re(I,J,K)/d_dr
             A(2)=vel_Grz%Re(I,J,K)/d_dr
-            if ((dabs(A(0))>2d0 .or. dabs(A(1))>2d0 .or. dabs(A(2))>5d0) .and. .NOT.(EXTRAPOLATE_FLAG)) then
+            if ((dabs(A(0))>0.25d0 .or. dabs(A(1))>0.25d0 .or. (A(2))<-3d0 .or. (A(2))>1.4d0) .and. .NOT.(EXTRAPOLATE_FLAG)) then
 		print*,' Extrapolating GTD!', A
 		EXTRAPOLATE_FLAG=.TRUE.
             end if
