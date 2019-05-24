@@ -2,7 +2,7 @@ INSTDIR		= ./install/
 PROGDIR		= ./program/
 UTILDIR		= ./utils/
 RUNDIR      = ~/runs/$(shell date +%Y%m%d_%H%M%S)
-UTIL		= prim2matlab
+UTIL		= prim2matlab_default
 numcore := $(shell ./num_core.sh)
 
 TRANSFORM	= fftw3
@@ -23,8 +23,8 @@ else
 	COMPILER	= mpiifort
 endif
 
-COMPFLAGS	= -cpp -c -O3 -heap-arrays 1024 -mcmodel=medium -I/home/lsf212/netcdf_ifort/include
-LIBS = -mkl -L/home/lsf212/netcdf_ifort/lib cheby.o -lnetcdff
+COMPFLAGS	= -cpp -c -O3 -heap-arrays 1024 -mcmodel=medium -I/apps/netcdf/4.4.4-fortran/include
+LIBS = gtd2d_libinter_cfun.a -mkl -L/apps/netcdf/4.4.4-fortran/lib cheby.o -lfftw3 -lnetcdf -lnetcdff
 else
 ifeq (${numcore},1)
 	COMPILER	= gfortran
@@ -38,6 +38,7 @@ LIBS		= gtd2d_libinter_cfun.a \
 	  -L/usr/lib \
 	  cheby.o -lfftw3 -llapack -lnetcdff \
 	  # -lblas -lcurl
+UNDER_SCOR = -fno-underscoring
 endif
 
 #------------------------------------------------------------------------
@@ -133,4 +134,4 @@ velocity.o : $(PROGDIR)velocity.f90 timestep.o transform.o
 	$(COMPILER) $(COMPFLAGS) $(PROGDIR)velocity.f90
 
 GTD.o : $(PROGDIR)GTD.f90 velocity.o transform.o variables.o
-	$(COMPILER) -fno-underscoring $(COMPFLAGS) $(PROGDIR)GTD.f90
+	$(COMPILER) $(UNDER_SCOR) $(COMPFLAGS) $(PROGDIR)GTD.f90

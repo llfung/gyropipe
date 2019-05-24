@@ -1,0 +1,21 @@
+#!/bin/sh
+#PBS -l select=1:ncpus=4:mem=1gb
+#PBS -l walltime=15:00:00
+#PBS -k oe
+module load intel-suite mpi fftw/3.3.3-double netcdf/4.4.4-fortran netcdf/4.4.1-c matlab/R2018a
+
+
+cp $PBS_O_WORKDIR/install/* $TMPDIR
+cp $PBS_O_WORKDIR/state.cdf.in $TMPDIR
+cd $TMPDIR
+
+mpiexec ./main.out
+
+mkdir $HOME/runs/$PBS_JOBID
+mkdir $HOME/runs/$PBS_JOBID/script
+
+cp * $HOME/runs/$PBS_JOBID
+
+cp $PBS_O_WORKDIR/program/* $HOME/runs/$PBS_JOBID/script/
+
+exit 0
