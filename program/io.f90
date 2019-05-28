@@ -9,6 +9,7 @@
    use temperature
    use nonlinear
    use netcdf
+   use meshs
    implicit none
    save
 
@@ -170,7 +171,7 @@
 
          e=nf90_inq_varid(f,'dt', i)
          e=nf90_get_var(f,i, d)
-         if(d_timestep<0d0) tim_dt = min(d,1d-5)
+         if(d_timestep<0d0) tim_dt = min(d,1d-6)
          if(d_timestep>0d0) tim_dt = d_timestep
          e=nf90_inq_varid(f,'dtcor', i)
          if(e==nf90_noerr)  e=nf90_get_var(f,i, tim_corr_dt)
@@ -180,8 +181,10 @@
          e=nf90_inq_varid(f,'nint', i)
          if(e==nf90_noerr)  e=nf90_get_var(f,i, d)
          if(e==nf90_noerr) then
-            if (mpi_rnk==0) print*,' d_nint   :',d
-            d_nint=d
+            if (mpi_rnk==0) then
+              print*,'Adjusting Mean Prof...: d_nint = ',d
+              d_nint=d
+            end if
          end if
 
          call io_load_coll(f,'Ur',interp,N_,r,A,1, vel_ur)
@@ -189,6 +192,11 @@
          call io_load_coll(f,'Uz',interp,N_,r,A,0, vel_uz)
          call io_load_coll(f,'T', interp,N_,r,A,0, temp_tau)
 
+         ! Adjust Mean Prof of temp
+         if (mpi_rnk==0) then
+           temp_tau%Re(:,0)=temp_tau%Re(:,0)-dlog(2*d_nint)
+           d_nint = dot_product(dexp(temp_tau%Re(:,0)),mes_D%intrdr)
+         end if
          deallocate(r)
 
          e=nf90_close(f)
@@ -386,7 +394,36 @@
 
    end subroutine io_save_state
 
+   subroutine io_save_mesh()
+      integer :: e, f
+      integer :: rd, Hd, ReImd, dims(3)
+      integer :: r,dt,dtcor,dtcfl, Ur,Ut,Uz, T, nint,intrdr
 
+      if(mpi_rnk/=0) return
+         print*, ' saving mesh'
+         e=nf90_create('mesh.nf', nf90_clobber, f)
+
+         e=nf90_put_att(f, nf90_global, 't', tim_t)
+         e=nf90_put_att(f, nf90_global, 'Re', d_Re)
+         e=nf90_put_att(f, nf90_global, 'Ri', d_Ri)
+         e=nf90_put_att(f, nf90_global, 'dr', d_dr)
+         e=nf90_put_att(f, nf90_global, 'Vs', d_Vs)
+         e=nf90_put_att(f, nf90_global, 'Pe', d_Pe)
+         e=nf90_put_att(f, nf90_global, 'alpha', d_alpha)
+
+         e=nf90_def_dim(f, 'r', i_N, rd)
+
+         e=nf90_def_var(f, 'r',     nf90_double, (/rd/), r)
+         e=nf90_def_var(f, 'intrdr',nf90_double, (/rd/), intrdr)
+
+         e=nf90_enddef(f)
+
+         e=nf90_put_var(f, r, mes_D%r(1:i_N,1))
+         e=nf90_put_var(f, intrdr, mes_D%intrdr)
+
+         e=nf90_close(f)
+
+   end subroutine io_save_mesh
 !--------------------------------------------------------------------------
 !  Save coll variable
 !--------------------------------------------------------------------------

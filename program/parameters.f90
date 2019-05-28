@@ -20,31 +20,32 @@
    integer,          parameter :: i_Mp          = 1
 
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
-   double precision            :: d_Re          = 0.280749319614103d0
-   double precision            :: d_Ri          = 10.07102489907080d0
-   double precision, parameter :: d_Vs          = 0.448798950512828d0 ! Changes with flow rate, as always normalised by bulk flow
-   double precision, parameter :: d_dr          = 0.954588243947919d0
+   double precision            :: d_Re          = 0.160428182636631d0
+   double precision            :: d_Ri          = 41.94581870462980d0
+   double precision, parameter :: d_Vs          = 0.785398163397448d0 ! Changes with flow rate, as always normalised by bulk flow
+   double precision, parameter :: d_dr          = 1.670529426908860d0
    double precision            :: d_Pe          = 1d0/d_Vs/d_Vs*d_dr
    double precision            :: d_Pe_dm       = 4d0/d_Vs/d_Vs*d_dr
-   double precision            :: d_alpha       = 0.8d0
+   double precision            :: d_alpha       = 0.75d0
    logical,          parameter :: b_const_flux  = .true.
    logical,          parameter :: b_mirrorsym   = .false.
    logical,          parameter :: b_shiftrefl   = .false.
    logical,          parameter :: b_shiftrott   = .false.
    logical,          parameter :: b_loadstate   = .true.
+   logical,          parameter :: b_const_mean  = .false.
    double precision, parameter :: d_minE3d      = 1d-5
 
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
-   integer,          parameter :: i_save_rate1  = 20!100
+   integer,          parameter :: i_save_rate1  = 100!100
    integer,          parameter :: i_save_rate2  = 10
-   integer,          parameter :: i_maxtstep    = 70000
+   integer,          parameter :: i_maxtstep    = 300
    double precision, parameter :: d_maxt        = -1d0
    double precision, parameter :: d_cpuhours    = 1d99 !90d0
    double precision, parameter :: d_time        = 0d0 !-1d0
    double precision, parameter :: d_timestep    = -1d0 !1d-3 !0.05d0
    double precision, parameter :: d_maxdt       = 1d-3 !1d99
    double precision, parameter :: d_dterr       = 1d-8 !1d99
-   double precision, parameter :: d_dterr_scalar= 1d-9 !1d99
+   double precision, parameter :: d_dterr_scalar= 2d-9 !1d99
    double precision, parameter :: d_dterr_bc    = 1d99 !1d99
    double precision, parameter :: d_courant     = 0.45d0
    double precision, parameter :: d_implicit    = 0.51d0

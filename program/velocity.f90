@@ -434,6 +434,12 @@
          vel_ur%Im(:,0) = 0d0
          vel_ut%Im(:,0) = 0d0
          vel_uz%Im(:,0) = 0d0
+
+         ! Keep mean prof constant
+         if (b_const_mean) then
+           vel_ut%Re(:,0) = ut_%Re(:,0)
+           vel_uz%Re(:,0) = uz_%Re(:,0)
+         end if
       end if
 
    end subroutine vel_step

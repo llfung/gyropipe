@@ -342,10 +342,8 @@
       else
               ! if (mpi_rnk==0) print*, tim_it
          if(mpi_rnk==0 .and. modulo(tim_step,i_save_rate2)==0) then
-            if(d_timestep> 0d0) print*,' step=',tim_step,' its=',tim_it
-            if(d_timestep<=0d0) print*,' step=',tim_step,' its=',tim_it,' dt=',real(tim_dt)
-            print*, 'temp_dterr: ', tim_dterr_scalar
-            print*, 'bc_dterr: ', tim_dterr_bc
+            if(d_timestep> 0d0) print*,' step=',tim_step,' its=',tim_it, 'temp_dterr: ', tim_dterr_scalar, 'bc_dterr: ', tim_dterr_bc
+            if(d_timestep<=0d0) print*,' step=',tim_step,' its=',tim_it,' dt=',real(tim_dt) , 'temp_dterr: ', tim_dterr_scalar, 'bc_dterr: ', tim_dterr_bc
          end if
          tim_it = 0
       end if

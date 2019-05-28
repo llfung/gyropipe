@@ -58,6 +58,8 @@
       if (mpi_rnk==0) then
         temp_tau%Re(:,0)=(- mes_D%r(:,2))*d_dr/d_Vs
         d_nint = dot_product(dexp(temp_tau%Re(:,0)),mes_D%intrdr)
+        temp_tau%Re(:,0)=temp_tau%Re(:,0)-dlog(2*d_nint)
+        d_nint = dot_product(dexp(temp_tau%Re(:,0)),mes_D%intrdr)
       end if
 #ifdef _MPI
       call MPI_BCAST(d_nint, 1, MPI_DOUBLE_PRECISION, 0, mpi_comm_world, mpi_er)
@@ -179,6 +181,10 @@
       if(mpi_rnk/=0)  return
          temp_tau%Im(:,0) = 0d0
 
+         ! Keep mean prof constant
+         if (b_const_mean) then
+           temp_tau%Re(:,0) = T_%Re(:,0)
+         end if
    end subroutine temp_step
 !------------------------------------------------------------------------
 !  predictor with euler nonlinear terms
