@@ -32,23 +32,14 @@
         do J=0,i_Th-1
           do I=0,i_pZ-1
             A_=A
-            ! A(3)=vel_Grt%Re(I,J,K)/d_dr
-            ! A(6)=vel_Grz%Re(I,J,K)/d_dr
             A(2)=vel_Grz%Re(I,J,K)/d_dr
 
             ! call gtd_eig_cfun(A,Diff)
             if (maxval(dabs(A_-A))/=0d0) call gtd2d_libinter_cfun(A,Diff)
 
-            ! GTD_Drr_bc%Re(I,J)=Diff(0)
-            ! GTD_Drt_bc%Re(I,J)=Diff(1)
-            ! GTD_Drz_bc%Re(I,J)=Diff(2)
-            !
-            ! GTD_er_bc%Re(I,J)=Diff(6)
-
             GTD_Drr_bc%Re(I,J)=Diff(0)
             GTD_Drt_bc%Re(I,J)=0d0
             GTD_Drz_bc%Re(I,J)=Diff(1)
-
             GTD_er_bc%Re(I,J)=Diff(3)
             end do
         end do
@@ -64,34 +55,17 @@
         do I=0,i_pZ-1
           do J=0,i_Th-1
             A_=A
-            ! A(0)=vel_Grr%Re(I,J,K)/d_dr
-            ! A(1)=vel_Gtr%Re(I,J,K)/d_dr
-            ! A(2)=vel_Gzr%Re(I,J,K)/d_dr
-            ! A(3)=vel_Grt%Re(I,J,K)/d_dr
-            ! A(4)=vel_Gtt%Re(I,J,K)/d_dr
-            ! A(5)=vel_Gzt%Re(I,J,K)/d_dr
-            ! A(6)=vel_Grz%Re(I,J,K)/d_dr
-            ! A(7)=vel_Gtz%Re(I,J,K)/d_dr
             A(0)=vel_Grr%Re(I,J,K)/d_dr
             A(1)=vel_Gzr%Re(I,J,K)/d_dr
             A(2)=vel_Grz%Re(I,J,K)/d_dr
             if ((dabs(A(0))>0.25d0 .or. dabs(A(1))>0.25d0 .or. (A(2))<-3d0 .or. (A(2))>1.4d0) .and. .NOT.(EXTRAPOLATE_FLAG)) then
-		print*,' Extrapolating GTD!', A
-		EXTRAPOLATE_FLAG=.TRUE.
+              print*,' Extrapolating GTD!', A
+              EXTRAPOLATE_FLAG=.TRUE.
             end if
-	    if (maxval(dabs(A_-A))/=0d0) then
+            if (maxval(dabs(A_-A))/=0d0) then
               ! call gtd_eig_cfun(A,Diff)
               call gtd2d_libinter_cfun(A,Diff)
             end if
-            ! GTD_Drr%Re(I,J,K)=Diff(0)
-            ! GTD_Drt%Re(I,J,K)=Diff(1)
-            ! GTD_Drz%Re(I,J,K)=Diff(2)
-            ! GTD_Dtt%Re(I,J,K)=Diff(3)
-            ! GTD_Dtz%Re(I,J,K)=Diff(4)
-            ! GTD_Dzz%Re(I,J,K)=Diff(5)
-            ! GTD_er%Re(I,J,K)=Diff(6)
-            ! GTD_et%Re(I,J,K)=Diff(7)
-            ! GTD_ez%Re(I,J,K)=Diff(8)
             GTD_Drr%Re(I,J,K)=Diff(0)
             GTD_Drt%Re(I,J,K)=0d0
             GTD_Drz%Re(I,J,K)=Diff(1)

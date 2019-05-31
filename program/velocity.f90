@@ -332,12 +332,12 @@
       ! if (mpi_rnk==0)c2%Re(:,0)=c2%Re(:,0)-vel_Up(:)
       ! call tra_coll2phys(c2,vel_curlt_comb)
       ! Computing Gradient G for GTD
-      call var_coll_grad(vel_ur,c1,c2,c3)
+      call var_coll_grad(vel_ur,c1,c2,c3,1)
       call tra_coll2phys(c1,vel_Grr, c2,vel_Gtr, c3,vel_Gzr)
-      call var_coll_grad(vel_ut,c1,c2,c3)
+      call var_coll_grad(vel_ut,c1,c2,c3,1)
       call tra_coll2phys(c1,vel_Grt, c2,vel_Gtt, c3,vel_Gzt)
 
-      call var_coll_grad(vel_uz,c1,c2,c3)
+      call var_coll_grad(vel_uz,c1,c2,c3,0)
       if (mpi_rnk==0)c1%Re(:,0)=c1%Re(:,0)+vel_Up(:)
       call tra_coll2phys(c1,vel_Grz, c2,vel_Gtz, c3,vel_Gzz)
       ! if (mpi_rnk==0) print*,c1%Re(:,0)

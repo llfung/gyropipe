@@ -168,6 +168,8 @@
       if(mpi_rnk==0)  print*, 'initialising output files...'
       call io_openfiles()
 
+      ! call io_save_mesh()
+
       if(mpi_rnk==0) then
          open (99, file='PRECOMPUTING')
          close(99, status='delete')

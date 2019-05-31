@@ -393,10 +393,99 @@
          e=nf90_close(f)
 
    end subroutine io_save_state
+   subroutine io_save_GTD()
+      integer :: e, f
+      integer :: rd, Hd, ReImd, dims(3)
+      integer :: r,dt,dtcor,dtcfl, nint,intrdr
+      integer :: Drr,Drz,Dzz,er,ez
+      integer :: Grr,Grt,Grz,Gtr,Gtt,Gtz,Gzr,Gzt,Gzz
+      TYPE(coll) :: cc1,cc2,cc3
+
+      if(mpi_rnk==0) then
+         print*, ' saving GTD'
+         e=nf90_create('GTD.nf', nf90_clobber, f)
+
+         e=nf90_put_att(f, nf90_global, 't', tim_t)
+         e=nf90_put_att(f, nf90_global, 'Re', d_Re)
+         e=nf90_put_att(f, nf90_global, 'Ri', d_Ri)
+         e=nf90_put_att(f, nf90_global, 'dr', d_dr)
+         e=nf90_put_att(f, nf90_global, 'Vs', d_Vs)
+         e=nf90_put_att(f, nf90_global, 'Pe', d_Pe)
+         e=nf90_put_att(f, nf90_global, 'alpha', d_alpha)
+
+         e=nf90_def_dim(f, 'r', i_N, rd)
+         e=nf90_def_dim(f, 'H', i_H1+1, Hd)
+         e=nf90_def_dim(f, 'ReIm', 2, ReImd)
+
+         e=nf90_def_var(f, 'r',     nf90_double, (/rd/), r)
+         e=nf90_def_var(f, 'dt',    nf90_double, dt)
+         e=nf90_def_var(f, 'dtcor', nf90_double, dtcor)
+         e=nf90_def_var(f, 'dtcfl', nf90_double, dtcfl)
+         e=nf90_def_var(f, 'nint', nf90_double, nint)
+
+         dims = (/rd,Hd,ReImd/)
+         e=nf90_def_var(f, 'r',     nf90_double, (/rd/), r)
+         e=nf90_def_var(f, 'intrdr',nf90_double, (/rd/), intrdr)
+
+         call io_define_coll(f, 'Grr', dims, Grr)
+         call io_define_coll(f, 'Grt', dims, Grt)
+         call io_define_coll(f, 'Grz', dims, Grz)
+         call io_define_coll(f, 'Gtr', dims, Gtr)
+         call io_define_coll(f, 'Gtt', dims, Gtt)
+         call io_define_coll(f, 'Gtz', dims, Gtz)
+         call io_define_coll(f, 'Gzr', dims, Gzr)
+         call io_define_coll(f, 'Gzt', dims, Gzt)
+         call io_define_coll(f, 'Gzz', dims, Gzz)
+
+         call io_define_coll(f, 'Drr', dims, Drr)
+         call io_define_coll(f, 'Drz', dims, Drz)
+         call io_define_coll(f, 'Dzz', dims, Dzz)
+         call io_define_coll(f, 'er', dims, er)
+         call io_define_coll(f, 'ez', dims, ez)
+
+         e=nf90_enddef(f)
+
+         e=nf90_put_var(f, r, mes_D%r(1:i_N,1))
+         e=nf90_put_var(f, dt, tim_dt)
+         e=nf90_put_var(f, dtcor, tim_corr_dt)
+         e=nf90_put_var(f, dtcfl, tim_cfl_dt)
+         !d_nint = dot_product(dexp(temp_tau%Re(:,0)),mes_D%intrdr)
+         e=nf90_put_var(f, nint, d_nint)
+      end if
+
+      call tra_phys2coll(vel_Grr,cc1,vel_Grt,cc2,vel_Grz,cc3)
+      call io_save_coll(f,Grr, cc1)
+      call io_save_coll(f,Grt, cc2)
+      call io_save_coll(f,Grz, cc3)
+
+      call tra_phys2coll(vel_Gtr,cc1,vel_Gtt,cc2,vel_Gtz,cc3)
+      call io_save_coll(f,Gtr, cc1)
+      call io_save_coll(f,Gtt, cc2)
+      call io_save_coll(f,Gtz, cc3)
+
+      call tra_phys2coll(vel_Gzr,cc1,vel_Gzt,cc2,vel_Gzz,cc3)
+      call io_save_coll(f,Gzr, cc1)
+      call io_save_coll(f,Gzt, cc2)
+      call io_save_coll(f,Gzz, cc3)
+
+      call tra_phys2coll(GTD_Drr,cc1,GTD_Drz,cc2,GTD_Dzz,cc3)
+      call io_save_coll(f,Drr, cc1)
+      call io_save_coll(f,Drz, cc2)
+      call io_save_coll(f,Dzz, cc3)
+
+      call tra_phys2coll(GTD_er,cc1)
+      call tra_phys2coll(GTD_ez,cc2)
+      call io_save_coll(f,er, cc1)
+      call io_save_coll(f,ez, cc2)
+
+      if(mpi_rnk==0)  &
+         e=nf90_close(f)
+
+   end subroutine io_save_GTD
 
    subroutine io_save_mesh()
       integer :: e, f
-      integer :: rd, Hd, ReImd, dims(3)
+      integer :: rd, mes,dr,rd_ext,bccoeff, bcd,dr_r0,dr_r1
       integer :: r,dt,dtcor,dtcfl, Ur,Ut,Uz, T, nint,intrdr
 
       if(mpi_rnk/=0) return
@@ -412,14 +501,24 @@
          e=nf90_put_att(f, nf90_global, 'alpha', d_alpha)
 
          e=nf90_def_dim(f, 'r', i_N, rd)
+         e=nf90_def_dim(f, 'mesrext', i_N+i_KL, rd_ext)
+         e=nf90_def_dim(f, 'meshcoeff', 2*i_KL+1, mes)
+         e=nf90_def_dim(f, 'bccoeff', 1+i_KL, bccoeff)
+         e=nf90_def_dim(f, 'bc_d', 1+i_KL, bcd)
 
          e=nf90_def_var(f, 'r',     nf90_double, (/rd/), r)
          e=nf90_def_var(f, 'intrdr',nf90_double, (/rd/), intrdr)
+         e=nf90_def_var(f, 'dr',nf90_double, (/mes,rd_ext/), dr)
+         e=nf90_def_var(f, 'dr0',nf90_double, (/bccoeff,bcd/), dr_r0)
+         e=nf90_def_var(f, 'dr1',nf90_double, (/bccoeff,bcd/), dr_r1)
 
          e=nf90_enddef(f)
 
-         e=nf90_put_var(f, r, mes_D%r(1:i_N,1))
+         e=nf90_put_var(f, r,  mes_D%r(1:i_N,1))
          e=nf90_put_var(f, intrdr, mes_D%intrdr)
+         e=nf90_put_var(f, dr, mes_D%dr(1)%M(1:2*i_KL+1, 1-i_KL:i_N))
+         e=nf90_put_var(f, dr_r0, mes_D%dr0(1:1+i_KL,0:i_KL))
+         e=nf90_put_var(f, dr_r1, mes_D%dr1(1:1+i_KL,0:i_KL))
 
          e=nf90_close(f)
 

@@ -120,6 +120,7 @@
 !-------------------------------------------------------------------------
    subroutine non_temperature()
       double precision :: a(i_N), c, beta, Pe
+      type(phys) :: GTD_r,GTD_t,GTD_z
       _loop_km_vars
       call GTD_compute()
       beta=d_Vs
@@ -154,16 +155,16 @@
 
       call var_coll_div(GTD_er_col,GTD_et_col,GTD_ez_col,GTD_grade)
 
-      GTD_er%Re=DT_gradHr%Re/d_Pe-temp_gradr%Re/d_Pe_dm
-      call tra_phys2spec(GTD_er, s)
+      GTD_r%Re=DT_gradHr%Re/d_Pe-temp_gradr%Re/d_Pe_dm
+      call tra_phys2spec(GTD_r, s)
       call var_spec2coll(s, GTD_er_col)
 
-      GTD_et%Re=DT_gradHt%Re/d_Pe-temp_gradt%Re/d_Pe_dm
-      call tra_phys2spec(GTD_et, s)
+      GTD_t%Re=DT_gradHt%Re/d_Pe-temp_gradt%Re/d_Pe_dm
+      call tra_phys2spec(GTD_t, s)
       call var_spec2coll(s, GTD_et_col)
 
-      GTD_ez%Re=DT_gradHz%Re/d_Pe-temp_gradz%Re/d_Pe_dm
-      call tra_phys2spec(GTD_ez, s)
+      GTD_z%Re=DT_gradHz%Re/d_Pe-temp_gradz%Re/d_Pe_dm
+      call tra_phys2spec(GTD_z, s)
       call var_spec2coll(s, GTD_ez_col)
 
       call var_coll_div(GTD_er_col,GTD_et_col,GTD_ez_col,GTD_lapH)

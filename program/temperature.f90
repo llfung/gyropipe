@@ -123,7 +123,7 @@
 
       else if(F==1) then
          d2 = 2d0*(dot_product(dexp(temp_tau%Re(:,0)), mes_D%intrdr)-d_nint)
-         d3 = -d2/d1 ! Need to work out how to compensate for exp(H) lost.
+         d3 = -d2/d1 
          temp_tau%Re(:,0) = dlog(dexp(temp_tau%Re(:,0)) + d3*Ti)
       end if
 

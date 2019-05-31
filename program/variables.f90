@@ -489,14 +489,19 @@
 !------------------------------------------------------------------------
 !  take the gradient of a scalar
 !------------------------------------------------------------------------
-   subroutine var_coll_grad(p, r,t,z)
+   subroutine var_coll_grad(p, r,t,z,S)
       type (coll), intent(in)  :: p
       type (coll), intent(out) :: r,t,z
+      integer, intent(in), optional :: S
       _loop_km_vars
 
       call var_coll_copy(p,c1)
+      if(.not. present(S)) then
+        call var_coll_meshmult(0,mes_D%dr(1),c1, r)
+      else
+        call var_coll_meshmult(S,mes_D%dr(1),c1, r)
+      end if
 
-      call var_coll_meshmult(0,mes_D%dr(1),c1, r)
       _loop_km_begin
          t%Re(:,nh) = -c1%Im(:,nh)*ad_m1r1(:,m)
          t%Im(:,nh) =  c1%Re(:,nh)*ad_m1r1(:,m)
