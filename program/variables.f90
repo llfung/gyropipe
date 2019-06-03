@@ -515,14 +515,16 @@
    !------------------------------------------------------------------------
    !  take the r-gradient of a scalar
    !------------------------------------------------------------------------
-   subroutine var_coll_gradr(p, r)
+   subroutine var_coll_gradr(S,p, r)
+      integer, intent(in) :: S
       type (coll), intent(in)  :: p
       type (coll), intent(out) :: r
+
       _loop_km_vars
 
       call var_coll_copy(p,c1)
 
-      call var_coll_meshmult(0,mes_D%dr(1),c1, r)
+      call var_coll_meshmult(S,mes_D%dr(1),c1, r)
 
    end subroutine var_coll_gradr
 !------------------------------------------------------------------------

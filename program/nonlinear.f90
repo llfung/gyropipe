@@ -144,18 +144,18 @@
       call tra_phys2spec(p, s)
       call var_spec2coll(s, temp_N)
 
-      call tra_phys2spec(GTD_er, s)
+      call tra_phys2spec(GTD_er, s) !odd
       call var_spec2coll(s, GTD_er_col)
 
       call tra_phys2spec(GTD_et, s)
       call var_spec2coll(s, GTD_et_col)
 
-      call tra_phys2spec(GTD_et, s)
-      call var_spec2coll(s, GTD_et_col)
+      call tra_phys2spec(GTD_ez, s)
+      call var_spec2coll(s, GTD_ez_col)
 
       call var_coll_div(GTD_er_col,GTD_et_col,GTD_ez_col,GTD_grade)
 
-      GTD_r%Re=DT_gradHr%Re/d_Pe-temp_gradr%Re/d_Pe_dm
+      GTD_r%Re=DT_gradHr%Re/d_Pe-temp_gradr%Re/d_Pe_dm !odd
       call tra_phys2spec(GTD_r, s)
       call var_spec2coll(s, GTD_er_col)
 
