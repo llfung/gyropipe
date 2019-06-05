@@ -1,6 +1,6 @@
 #!/bin/sh
-#PBS -l select=1:ncpus=4:mem=1gb
-#PBS -l walltime=15:00:00
+#PBS -l select=1:ncpus=2:mem=1gb
+#PBS -l walltime=72:00:00
 #PBS -k oe
 module load intel-suite mpi fftw/3.3.3-double netcdf/4.4.4-fortran netcdf/4.4.1-c matlab/R2018a
 

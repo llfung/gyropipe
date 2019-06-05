@@ -105,64 +105,39 @@
    !  Sets  A = c1 I + c2 Lap(h)  then replaces A with its LU factorisation
    !  if PM==0 usual laplacian, PM==-1/1 modified laplacian
    !------------------------------------------------------------------------
-      subroutine tim_lumesh_init_mod(PM,BC,c1,c2, A)
-         integer,          intent(in)  :: PM,BC
-         double precision, intent(in)  :: c1,c2
-         type (lumesh),    intent(out) :: A(0:i_pH1)
-         ! type (mesh),    intent(out) :: Amul(0:i_pH1)
-         double precision :: d(i_N)
-         integer :: info, n,j, S,kk
-         _loop_km_vars
+    subroutine tim_lumesh_init_mod(PM,BC,c1,c2, A)
+       integer,          intent(in)  :: PM,BC
+       double precision, intent(in)  :: c1,c2
+       type (lumesh),    intent(out) :: A(0:i_pH1)
+       double precision :: d(i_N)
+       integer :: info, n,j, S,kk
+       _loop_km_vars
 
-         _loop_km_begin
-            d = -mes_D%r(:,-2)*i_Mp*m*i_Mp*m - d_alpha*k*d_alpha*k
-            if(PM/=0) d = d - mes_D%r(:,-2) - 2d0*PM*i_Mp*m*mes_D%r(:,-2)
-            A(nh)%M(i_KL+1:, :) = c2 * mes_D%radLap%M(:,1:)
-            A(nh)%M(2*i_KL+1,:) = A(nh)%M(2*i_KL+1,:) + c2*d + c1
+       _loop_km_begin
+          d = -mes_D%r(:,-2)*i_Mp*m*i_Mp*m - d_alpha*k*d_alpha*k
+          if(PM/=0) d = d - mes_D%r(:,-2) - 2d0*PM*i_Mp*m*mes_D%r(:,-2)
+          A(nh)%M(i_KL+1:, :) = c2 * mes_D%radLap%M(:,1:)
+          A(nh)%M(2*i_KL+1,:) = A(nh)%M(2*i_KL+1,:) + c2*d + c1
 
-            ! assume symmetry on axis: S==-1 mode odd,  S==1 mode even
-            S = modulo(m*i_Mp+abs(PM),2)
-            S = 1 - 2*S
-            do j = 1, i_KL
-               do n = 1, i_KL+1-j
-                  A(nh)%M(2*i_KL+1+n-j, j) = A(nh)%M(2*i_KL+1+n-j, j)  &
-                     + c2 * S * mes_D%radLap%M(i_KL+1+n-(1-j), (1-j))
-               end do
-            end do
-   					! boundary condition
-!                if (mpi_rnk==0 .and. nh==0) then
-!                  open(53,file='A_bfore.txt')
-!                  do kk=1,3*i_KL+1
-!                    write(53,*) A(nh)%M(kk,:)
-!                  end do
-!                  write(53,*) mes_D%dr1(:,BC)
-!                  close(53)
-!                end if
-                do j = i_N-i_KL, i_N
-                   A(nh)%M(2*i_KL+1+i_N-j,j) = mes_D%dr1(i_KL-i_N+j+1,BC)*c1
-                end do
-                    ! BC for r=0
-!                if (mpi_rnk==0 .and. nh==0) then
-!                  do j = 1,i_KL+1
-!                    A(nh)%M(2*i_KL+2-j,j) = mes_D%dr0(j,0)
-!                  end do
-!                    A(nh)%M(2*i_KL+1,1)=1d0
-!                   do j = 2,i_KL+1
-!                    A(nh)%M(2*i_KL+2-j,j) = 0d0
-!                   end do
-!                  open(53,file='A_after.txt')
-!                  do kk=1,3*i_KL+1
-!                    write(53,*) A(nh)%M(kk,:)
-!                  end do
-!                  write(53,*) mes_D%dr0(:,0)
-!                  close(53)
-!                end if
-                ! Amul(nh)%M(1:2*i_KL+1, 1:i_N)=A(nh)%M(i_KL+1:3*i_KL+1,1:i_N)
-            call dgbtrf(i_N,i_N,i_KL,i_KL,A(nh)%M,3*i_KL+1,A(nh)%ipiv,info)
-            if(info /= 0) stop 'tim_lumesh_init'
-         _loop_km_end
+          ! assume symmetry on axis: S==-1 mode odd,  S==1 mode even
+          S = modulo(m*i_Mp+abs(PM),2)
+          S = 1 - 2*S
+          do j = 1, i_KL
+             do n = 1, i_KL+1-j
+                A(nh)%M(2*i_KL+1+n-j, j) = A(nh)%M(2*i_KL+1+n-j, j)  &
+                   + c2 * S * mes_D%radLap%M(i_KL+1+n-(1-j), (1-j))
+             end do
+          end do
 
-      end subroutine tim_lumesh_init_mod
+          do j = i_N-i_KL, i_N
+             A(nh)%M(2*i_KL+1+i_N-j,j) = mes_D%dr1(i_KL-i_N+j+1,BC)*c1
+          end do
+
+          call dgbtrf(i_N,i_N,i_KL,i_KL,A(nh)%M,3*i_KL+1,A(nh)%ipiv,info)
+          if(info /= 0) stop 'tim_lumesh_init'
+       _loop_km_end
+
+    end subroutine tim_lumesh_init_mod
 
 !------------------------------------------------------------------------
 !  solve system Ax=y for x, replaces b;  uses lapack routine dgbtrs()
