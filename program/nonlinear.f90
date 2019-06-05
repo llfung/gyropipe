@@ -17,7 +17,7 @@
 
    type (phys), private :: DT_gradHr,DT_gradHt,DT_gradHz
    ! A more conservative estimate for timesteps
-!   double precision, private :: p1_max,p2_max,p3_max
+   !   double precision, private :: p1_max,p2_max,p3_max
 
  contains
 
@@ -82,19 +82,19 @@
 
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
    subroutine non_addHPF()
-      double precision :: a(i_N), b(i_N)
+      double precision :: ialphaU(i_N), b(i_N)
       _loop_km_vars
                   			! force from background HPF and from T
       b = -vel_Up
       _loop_km_begin
-         a = d_alpha*k * vel_U
-         vel_Nr%Re(:,nh) = vel_Nr%Re(:,nh) + a*vel_ur%Im(:,nh)
-         vel_Nr%Im(:,nh) = vel_Nr%Im(:,nh) - a*vel_ur%Re(:,nh)
-         vel_Nt%Re(:,nh) = vel_Nt%Re(:,nh) + a*vel_ut%Im(:,nh)
-         vel_Nt%Im(:,nh) = vel_Nt%Im(:,nh) - a*vel_ut%Re(:,nh)
-         vel_Nz%Re(:,nh) = vel_Nz%Re(:,nh) + a*vel_uz%Im(:,nh)  &
+         ialphaU = d_alpha*k * vel_U
+         vel_Nr%Re(:,nh) = vel_Nr%Re(:,nh) + ialphaU*vel_ur%Im(:,nh)
+         vel_Nr%Im(:,nh) = vel_Nr%Im(:,nh) - ialphaU*vel_ur%Re(:,nh)
+         vel_Nt%Re(:,nh) = vel_Nt%Re(:,nh) + ialphaU*vel_ut%Im(:,nh)
+         vel_Nt%Im(:,nh) = vel_Nt%Im(:,nh) - ialphaU*vel_ut%Re(:,nh)
+         vel_Nz%Re(:,nh) = vel_Nz%Re(:,nh) + ialphaU*vel_uz%Im(:,nh)  &
                                            + b*vel_ur%Re(:,nh)
-         vel_Nz%Im(:,nh) = vel_Nz%Im(:,nh) - a*vel_uz%Re(:,nh)  &
+         vel_Nz%Im(:,nh) = vel_Nz%Im(:,nh) - ialphaU*vel_uz%Re(:,nh)  &
                                            + b*vel_ur%Im(:,nh)
 
       _loop_km_end
@@ -119,7 +119,7 @@
 !  nonlinear terms for the tempertaure
 !-------------------------------------------------------------------------
    subroutine non_temperature()
-      double precision :: a(i_N), c, beta, Pe
+      double precision :: ialphaU(i_N), c, beta, Pe
       type(phys) :: GTD_r,GTD_t,GTD_z
       _loop_km_vars
       call GTD_compute()
@@ -170,51 +170,37 @@
       call var_coll_div(GTD_er_col,GTD_et_col,GTD_ez_col,GTD_lapH)
 
       _loop_km_begin
-         a = d_alpha*k * vel_U
+         ialphaU = d_alpha*k * vel_U
 
-         temp_N%Re(:,nh) = temp_N%Re(:,nh) + a*temp_tau%Im(:,nh) &
+         temp_N%Re(:,nh) = temp_N%Re(:,nh) + ialphaU*temp_tau%Im(:,nh) &
                           + GTD_lapH%Re(:,nh) - d_Vs*GTD_grade%Re(:,nh)
 
-         temp_N%Im(:,nh) = temp_N%Im(:,nh) - a*temp_tau%Re(:,nh) &
+         temp_N%Im(:,nh) = temp_N%Im(:,nh) - ialphaU*temp_tau%Re(:,nh) &
                           + GTD_lapH%Im(:,nh) - d_Vs*GTD_grade%Im(:,nh)
 
       _loop_km_end
-      				! zero mode real
 
+      ! zero mode real
       if(mpi_rnk/=0) return
-      temp_N%Im(:,0) = 0d0
+        temp_N%Im(:,0) = 0d0
 
    end subroutine non_temperature
    !-------------------------------------------------------------------------
    !  nonlinear terms for the tempertaure
    !-------------------------------------------------------------------------
-      subroutine non_temperature_bc(F)
-        integer, intent(in) :: F
-        if (F==0) call GTD_compute_bc()
-        if (mpi_rnk==(_Nr-1)) temp_bc%Re(:,:) = (d_Vs*d_Pe*GTD_er_bc%Re &
-                              -GTD_Drt_bc%Re*temp_gradt%Re(:,:,mes_D%pN) &
-                              -GTD_Drz_bc%Re*temp_gradz%Re(:,:,mes_D%pN))/GTD_Drr_bc%Re
+  subroutine non_temperature_bc(F)
+      integer, intent(in) :: F
+      if (F==0) call GTD_compute_bc()
+      if (mpi_rnk==(_Nr-1)) temp_bc%Re(:,:) = (d_Vs*d_Pe*GTD_er_bc%Re &
+                            -GTD_Drt_bc%Re*temp_gradt%Re(:,:,mes_D%pN) &
+                            -GTD_Drz_bc%Re*temp_gradz%Re(:,:,mes_D%pN))/GTD_Drr_bc%Re
 
-         call tra_phys2coll_bc(temp_bc,temp_bc_col)
-         !if (mpi_rnk==0) print*, 'BC: ', F, temp_bc_col%Re
+       call tra_phys2coll_bc(temp_bc,temp_bc_col)
+       !if (mpi_rnk==0) print*, 'BC: ', F, temp_bc_col%Re
 
-           ! print*, mpi_rnk, temp_bc_col%Re
+         ! print*, mpi_rnk, temp_bc_col%Re
 
-      end subroutine non_temperature_bc
-      ! subroutine non_tempbc_eval(gradr_in)
-      !   type (coll),intent(in) :: gradr_in
-      !   type (coll_bc) :: bc_eval
-      !   integer :: n
-      !   call non_temperature_bc(1)
-      !   if (mpi_rnk/=0) return
-      !   do n = 0, var_H%pH1
-      !     bc_eval%Re(1,n)=temp_bc_col%Re(1,n)-gradr_in%Re(i_N,n)
-      !     bc_eval%Im(1,n)=temp_bc_col%Im(1,n)-gradr_in%Im(i_N,n)
-      !   end do
-      !   print*, mpi_rnk, tim_it, temp_bc_col%Re(1,:)
-      !   print*, mpi_rnk, tim_it, gradr_in%Re(i_N,:)
-      !   print*, mpi_rnk, tim_it, (bc_eval%Re**2d0+bc_eval%Im**2d0)
-      ! end subroutine non_tempbc_eval
+  end subroutine non_temperature_bc
    !------------------------------------------------------------------------
    !  get cfl max dt due to flow field
    !------------------------------------------------------------------------

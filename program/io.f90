@@ -40,16 +40,16 @@
 !  Open files written to every ... steps runtime
 !--------------------------------------------------------------------------
    subroutine io_openfiles()
-      character(10), save :: a = 'sequential'
+      character(10), save :: acs_mod = 'sequential'
       if(mpi_rnk/=0) return
-      if(io_dt/=0)  open(io_dt,access=a, file='tim_step.dat')
-      if(io_KE/=0)  open(io_KE,access=a, file='vel_energy.dat')
-      if(io_ID/=0)  open(io_ID,access=a, file='vel_totEID.dat')
-      if(io_pt/=0)  open(io_pt,access=a, file='vel_point.dat')
-      if(io_fr/=0)  open(io_fr,access=a, file='vel_friction.dat')
-      if(io_nint/=0)  open(io_nint,access=a, file='temp_nint.dat')
+      if(io_dt/=0)    open(io_dt,access=acs_mod, file='tim_step.dat')
+      if(io_KE/=0)    open(io_KE,access=acs_mod, file='vel_energy.dat')
+      if(io_ID/=0)    open(io_ID,access=acs_mod, file='vel_totEID.dat')
+      if(io_pt/=0)    open(io_pt,access=acs_mod, file='vel_point.dat')
+      if(io_fr/=0)    open(io_fr,access=acs_mod, file='vel_friction.dat')
+      if(io_nint/=0)  open(io_nint,access=acs_mod, file='temp_nint.dat')
 !      s = 'old'
-      a = 'append'
+      acs_mod = 'append'
    end subroutine io_openfiles
 
 
@@ -171,7 +171,7 @@
 
          e=nf90_inq_varid(f,'dt', i)
          e=nf90_get_var(f,i, d)
-         if(d_timestep<0d0) tim_dt = min(d,1d-6)
+         if(d_timestep<0d0) tim_dt = min(d,d_maxdt/1d-3)
          if(d_timestep>0d0) tim_dt = d_timestep
          e=nf90_inq_varid(f,'dtcor', i)
          if(e==nf90_noerr)  e=nf90_get_var(f,i, tim_corr_dt)

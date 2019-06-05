@@ -3,7 +3,6 @@
 !*************************************************************************
 #include "../parallel.h"
   module GTD
-    use netcdf
     use velocity
     use variables
     implicit none
@@ -19,62 +18,61 @@
 
     type (coll)    :: GTD_er_col, GTD_et_col, GTD_ez_col, GTD_grade, GTD_lapH ! See nonlinear>non_temperature
 
-    INTEGER        :: I,J,K
+    INTEGER        :: II,JJ,KK
     LOGICAL        :: EXTRAPOLATE_FLAG
 
-    ! DOUBLE PRECISION :: A(0:7), A_(0:7), Diff(0:8)
-    DOUBLE PRECISION :: A(0:2), A_(0:2), Diff(0:4)
+    DOUBLE PRECISION :: GTD_G(0:2), GTD_G_(0:2), Diff(0:4)
   contains
+!------------------------------------------------------------------------
+!  Algorithm for computing D_T from G=Grad(u) at BC for no-flux condition of H
+!------------------------------------------------------------------------
     subroutine GTD_compute_bc()
       if (mpi_rnk/=(_Nr-1)) return
-      A(:)=0d0
-      K=mes_D%pN
-        do J=0,i_Th-1
-          do I=0,i_pZ-1
-            A_=A
-            A(2)=vel_Grz%Re(I,J,K)/d_dr
+      GTD_G(:)=0d0
+      KK=mes_D%pN
+        do JJ=0,i_Th-1
+          do II=0,i_pZ-1
+            GTD_G_=GTD_G
+            GTD_G(2)=vel_Grz%Re(II,JJ,KK)/d_dr
 
-            ! call gtd_eig_cfun(A,Diff)
-            if (maxval(dabs(A_-A))/=0d0) call gtd2d_libinter_cfun(A,Diff)
+            ! call gtd_eig_cfun(GTD_G,Diff)
+            if (maxval(dabs(GTD_G_-GTD_G))/=0d0) call gtd2d_libinter_cfun(GTD_G,Diff)
 
-            GTD_Drr_bc%Re(I,J)=Diff(0)
-            GTD_Drt_bc%Re(I,J)=0d0
-            GTD_Drz_bc%Re(I,J)=Diff(1)
-            GTD_er_bc%Re(I,J)=Diff(3)
+            GTD_Drr_bc%Re(II,JJ)=Diff(0)
+            GTD_Drt_bc%Re(II,JJ)=0d0
+            GTD_Drz_bc%Re(II,JJ)=Diff(1)
+            GTD_er_bc%Re(II,JJ)=Diff(3)
             end do
         end do
-
     end subroutine GTD_compute_bc
-    ! Main Algorithm
+!------------------------------------------------------------------------
+!  Main Algorithm for computing D_T from G=Grad(u)
+!------------------------------------------------------------------------
     subroutine GTD_compute()
-      ! Calculate
-      ! print*, maxval(vel_Grz%Re/d_dr)
-      ! print*, minval(vel_Grz%Re/d_dr)
-      A_=0d0
-      do K=1,mes_D%pN
-        do I=0,i_pZ-1
-          do J=0,i_Th-1
-            A_=A
-            A(0)=vel_Grr%Re(I,J,K)/d_dr
-            A(1)=vel_Gzr%Re(I,J,K)/d_dr
-            A(2)=vel_Grz%Re(I,J,K)/d_dr
-            if ((dabs(A(0))>0.25d0 .or. dabs(A(1))>0.25d0 .or. (A(2))<-3d0 .or. (A(2))>1.4d0) .and. .NOT.(EXTRAPOLATE_FLAG)) then
-              print*,' Extrapolating GTD!', A
+      GTD_G_=0d0
+      do KK=1,mes_D%pN
+        do II=0,i_pZ-1
+          do JJ=0,i_Th-1
+            GTD_G_=GTD_G
+            GTD_G(0)=vel_Grr%Re(II,JJ,KK)/d_dr
+            GTD_G(1)=vel_Gzr%Re(II,JJ,KK)/d_dr
+            GTD_G(2)=vel_Grz%Re(II,JJ,KK)/d_dr
+            if ((dabs(GTD_G(0))>0.25d0 .or. dabs(GTD_G(1))>0.25d0 .or. (GTD_G(2))<-2.8d0 .or. (GTD_G(2))>1.4d0) .and. .NOT.(EXTRAPOLATE_FLAG)) then
+              print*,' Extrapolating GTD!', GTD_G
               EXTRAPOLATE_FLAG=.TRUE.
             end if
-            if (maxval(dabs(A_-A))/=0d0) then
-              ! call gtd_eig_cfun(A,Diff)
-              call gtd2d_libinter_cfun(A,Diff)
+            if (maxval(dabs(GTD_G_-GTD_G))/=0d0) then
+              call gtd2d_libinter_cfun(GTD_G,Diff)
             end if
-            GTD_Drr%Re(I,J,K)=Diff(0)
-            GTD_Drt%Re(I,J,K)=0d0
-            GTD_Drz%Re(I,J,K)=Diff(1)
-            GTD_Dtt%Re(I,J,K)=0d0
-            GTD_Dtz%Re(I,J,K)=0d0
-            GTD_Dzz%Re(I,J,K)=Diff(2)
-            GTD_er%Re(I,J,K)=Diff(3)
-            GTD_et%Re(I,J,K)=0d0
-            GTD_ez%Re(I,J,K)=Diff(4)
+            GTD_Drr%Re(II,JJ,KK)=Diff(0)
+            GTD_Drt%Re(II,JJ,KK)=0d0
+            GTD_Drz%Re(II,JJ,KK)=Diff(1)
+            GTD_Dtt%Re(II,JJ,KK)=0d0
+            GTD_Dtz%Re(II,JJ,KK)=0d0
+            GTD_Dzz%Re(II,JJ,KK)=Diff(2)
+            GTD_er%Re(II,JJ,KK)=Diff(3)
+            GTD_et%Re(II,JJ,KK)=0d0
+            GTD_ez%Re(II,JJ,KK)=Diff(4)
           end do
         end do
       end do
@@ -82,37 +80,17 @@
       call mpi_barrier(mpi_comm_world, mpi_er)
 #endif
     end subroutine GTD_compute
-
-    function InvMat(MatIn)
-      DOUBLE COMPLEX :: MatIn(3,3)
-      DOUBLE COMPLEX :: InvMat(3,3)
-      DOUBLE COMPLEX :: Matdet
-      Matdet=MatIn(1,1)*MatIn(2,2)*MatIn(3,3) &
-              +MatIn(1,2)*MatIn(2,3)*MatIn(3,1) &
-              +MatIn(1,3)*MatIn(2,1)*MatIn(3,2) &
-              -MatIn(1,1)*MatIn(2,3)*MatIn(3,2) &
-              -MatIn(1,2)*MatIn(2,1)*MatIn(3,3) &
-              -MatIn(1,3)*MatIn(2,2)*MatIn(3,1)
-      if (abs(Matdet)<1d-8) print*, 'InvMat of W: det(W)=', Matdet
-      InvMat(1,1)=MatIn(2,2)*MatIn(3,3)-MatIn(2,3)*MatIn(3,2)
-      InvMat(1,2)=-MatIn(1,2)*MatIn(3,3)+MatIn(1,3)*MatIn(3,2)
-      InvMat(1,3)=MatIn(1,2)*MatIn(2,3)-MatIn(1,3)*MatIn(2,2)
-      InvMat(2,1)=-MatIn(2,1)*MatIn(3,3)+MatIn(2,3)*MatIn(3,1)
-      InvMat(2,2)=MatIn(1,1)*MatIn(3,3)-MatIn(1,3)*MatIn(3,1)
-      InvMat(2,3)=-MatIn(1,1)*MatIn(2,3)+MatIn(1,3)*MatIn(2,1)
-      InvMat(3,1)=MatIn(2,1)*MatIn(3,2)-MatIn(2,2)*MatIn(3,1)
-      InvMat(3,2)=-MatIn(1,1)*MatIn(3,2)+MatIn(1,2)*MatIn(3,1)
-      InvMat(3,3)=MatIn(2,2)*MatIn(1,1)-MatIn(2,1)*MatIn(1,2)
-      InvMat=InvMat/Matdet
-      return
-    end function
+!------------------------------------------------------------------------
+!  Initialise stuff for the module and the MATLAB Coder generated library
+!------------------------------------------------------------------------
     subroutine GTD_precompute()
-      ! call gtd_eig_cfun_initialize()
 	    EXTRAPOLATE_FLAG=.FALSE.
       call gtd2d_libinter_cfun_initialize()
     end subroutine GTD_precompute
+!------------------------------------------------------------------------
+!  Decollocate memory stuff for the MATLAB Coder generated library
+!------------------------------------------------------------------------
     subroutine GTD_closing()
-      ! call gtd_eig_cfun_terminate()
       call gtd2d_libinter_cfun_terminate()
     end subroutine GTD_closing
   end module GTD

@@ -15,19 +15,9 @@
 
    call initialise()
 
-!    call vel_imposesym()
-!    call vel_transform()
-!
-! #ifdef _MPI
-!    call mpi_barrier(mpi_comm_world, mpi_er)
-! #endif
-!
-!    call GTD_compute()
-!
-
-      						! main loop
+   ! main loop
    do while(.not.terminate())
-                  ! Predictor Step
+      ! Predictor Step
       call vel_imposesym()
       call vel_transform()
       call temp_transform()
@@ -51,15 +41,8 @@
 
       call vel_transform()
       call temp_transform()
-                   ! Corrector Step iteration
+      ! Corrector Step iteration
       do while(tim_it/=0)
-        ! call temp_transform_gradr()
-        ! if (mpi_rnk==0) then
-        !   print*, tim_it, temp_gradr_coll%Re(:,0)
-        !   print*, tim_it, temp_tau_test%Re(:,0)
-        !   print*, tim_it, temp_gradr_coll%Re(:,0)-temp_tau_test%Re(:,0)
-        ! end if
-
          call non_velocity()
          call non_temperature()
          call var_null(2)       ! where you put util()
@@ -79,7 +62,7 @@
       tim_step = tim_step + 1
 
    end do
-      						! end main loop
+   ! end main loop
 
    call cleanup()
    stop

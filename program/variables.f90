@@ -206,27 +206,27 @@
 !  convert collocated -> spectral
 !-------------------------------------------------------------------------
 #ifndef _MPI
-   subroutine var_coll2spec(c,s, c2,s2, c3,s3)
+   subroutine var_coll2spec(c,s, cc,ss, ccc,sss)
       type (coll), intent(in)  :: c
       type (spec), intent(out) :: s
-      type (coll), intent(in),  optional :: c2,c3
-      type (spec), intent(out), optional :: s2,s3
+      type (coll), intent(in),  optional :: cc,ccc
+      type (spec), intent(out), optional :: ss,sss
       s%Re = transpose(c%Re)
       s%Im = transpose(c%Im)
-      if(.not. present(c2)) return
-      s2%Re = transpose(c2%Re)
-      s2%Im = transpose(c2%Im)
-      if(.not. present(c3)) return
-      s3%Re = transpose(c3%Re)
-      s3%Im = transpose(c3%Im)
+      if(.not. present(cc)) return
+      ss%Re = transpose(cc%Re)
+      ss%Im = transpose(cc%Im)
+      if(.not. present(ccc)) return
+      sss%Re = transpose(ccc%Re)
+      sss%Im = transpose(ccc%Im)
    end subroutine var_coll2spec
 
 #else
-   subroutine var_coll2spec(c,s, c2,s2, c3,s3)
+   subroutine var_coll2spec(c,s, cc,ss, ccc,sss)
       type (coll), intent(in)  :: c
       type (spec), intent(out) :: s
-      type (coll), intent(in),  optional :: c2,c3
-      type (spec), intent(out), optional :: s2,s3
+      type (coll), intent(in),  optional :: cc,ccc
+      type (spec), intent(out), optional :: ss,sss
       double precision :: bsend(2*i_pN*(i_pH1+1)*3,0:_Nr-1)
       double precision :: brecv(2*i_pN*(i_pH1+1)*3,0:_Nr-1)
       integer :: stp, dst,src, n,nh,l, nc, rko,nho
@@ -255,12 +255,12 @@
                bsend(l+1,stp) = c%Im(n,nh)
                l = l + 2
                if(nc<2) cycle
-               bsend(l,  stp) = c2%Re(n,nh)
-               bsend(l+1,stp) = c2%Im(n,nh)
+               bsend(l,  stp) = cc%Re(n,nh)
+               bsend(l+1,stp) = cc%Im(n,nh)
                l = l + 2
                if(nc<3) cycle
-               bsend(l,  stp) = c3%Re(n,nh)
-               bsend(l+1,stp) = c3%Im(n,nh)
+               bsend(l,  stp) = ccc%Re(n,nh)
+               bsend(l+1,stp) = ccc%Im(n,nh)
                l = l + 2
             end do
          end do
@@ -281,12 +281,12 @@
                s%Im(nh,n) = brecv(l+1,stp)
                l = l + 2
                if(nc<2) cycle
-               s2%Re(nh,n) = brecv(l,  stp)
-               s2%Im(nh,n) = brecv(l+1,stp)
+               ss%Re(nh,n) = brecv(l,  stp)
+               ss%Im(nh,n) = brecv(l+1,stp)
                l = l + 2
                if(nc<3) cycle
-               s3%Re(nh,n) = brecv(l,  stp)
-               s3%Im(nh,n) = brecv(l+1,stp)
+               sss%Re(nh,n) = brecv(l,  stp)
+               sss%Im(nh,n) = brecv(l+1,stp)
                l = l + 2
             end do
          end do
@@ -303,34 +303,34 @@
 !  convert spectral -> collocated
 !-------------------------------------------------------------------------
 #ifndef _MPI
-   subroutine var_spec2coll(s,c, s2,c2, s3,c3)
+   subroutine var_spec2coll(s,c, ss,cc, sss,ccc)
       type (spec), intent(in)  :: s
       type (coll), intent(out) :: c
-      type (spec), intent(in),  optional :: s2,s3
-      type (coll), intent(out), optional :: c2,c3
+      type (spec), intent(in),  optional :: ss,sss
+      type (coll), intent(out), optional :: cc,ccc
       c%Re = transpose(s%Re)
       c%Im = transpose(s%Im)
-      if(.not. present(s2)) return
-      c2%Re = transpose(s2%Re)
-      c2%Im = transpose(s2%Im)
-      if(.not. present(s3)) return
-      c3%Re = transpose(s3%Re)
-      c3%Im = transpose(s3%Im)
+      if(.not. present(ss)) return
+      cc%Re = transpose(ss%Re)
+      cc%Im = transpose(ss%Im)
+      if(.not. present(sss)) return
+      ccc%Re = transpose(sss%Re)
+      ccc%Im = transpose(sss%Im)
    end subroutine var_spec2coll
 
 #else
-   subroutine var_spec2coll(s,c, s2,c2, s3,c3)
+   subroutine var_spec2coll(s,c, ss,cc, sss,ccc)
       type (spec), intent(in)  :: s
       type (coll), intent(out) :: c
-      type (spec), intent(in),  optional :: s2,s3
-      type (coll), intent(out), optional :: c2,c3
+      type (spec), intent(in),  optional :: ss,sss
+      type (coll), intent(out), optional :: cc,ccc
       double precision :: bsend(2*(i_pH1+1)*i_pN*3,0:_Nr-1)
       double precision :: brecv(2*(i_pH1+1)*i_pN*3,0:_Nr-1)
       integer :: stp, dst,src, n,nh,l, ns, rko,nho
 
       ns = 1
-      if(present(s2)) ns = 2
-      if(present(s3)) ns = 3
+      if(present(ss)) ns = 2
+      if(present(sss)) ns = 3
 
       rko = (mpi_rnk/_Nr)*_Nr
       nho = var_H%pH0_(rko)
@@ -352,12 +352,12 @@
                bsend(l+1,stp) = s%Im(nh,n)
                l = l + 2
                if(ns<2) cycle
-               bsend(l,  stp) = s2%Re(nh,n)
-               bsend(l+1,stp) = s2%Im(nh,n)
+               bsend(l,  stp) = ss%Re(nh,n)
+               bsend(l+1,stp) = ss%Im(nh,n)
                l = l + 2
                if(ns<3) cycle
-               bsend(l,  stp) = s3%Re(nh,n)
-               bsend(l+1,stp) = s3%Im(nh,n)
+               bsend(l,  stp) = sss%Re(nh,n)
+               bsend(l+1,stp) = sss%Im(nh,n)
                l = l + 2
             end do
          end do
@@ -377,12 +377,12 @@
                c%Im(n,nh) = brecv(l+1,stp)
                l = l + 2
                if(ns<2) cycle
-               c2%Re(n,nh) = brecv(l,  stp)
-               c2%Im(n,nh) = brecv(l+1,stp)
+               cc%Re(n,nh) = brecv(l,  stp)
+               cc%Im(n,nh) = brecv(l+1,stp)
                l = l + 2
                if(ns<3) cycle
-               c3%Re(n,nh) = brecv(l,  stp)
-               c3%Im(n,nh) = brecv(l+1,stp)
+               ccc%Re(n,nh) = brecv(l,  stp)
+               ccc%Im(n,nh) = brecv(l+1,stp)
                l = l + 2
             end do
          end do
