@@ -24,7 +24,7 @@ else
 endif
 
 COMPFLAGS	= -cpp -c -O3 -heap-arrays 1024 -mcmodel=medium -I/apps/netcdf/4.4.4-fortran/include
-LIBS = gtd2d_libinter_cfun.a -mkl -L/apps/netcdf/4.4.4-fortran/lib cheby.o -lfftw3 -lnetcdf -lnetcdff
+LIBS = gtd2d_libinter_cfunvec.a -mkl -L/apps/netcdf/4.4.4-fortran/lib -L/apps/local/MATLAB/R2018a/sys/os/glnxa64 -lm -liomp5 cheby.o -lfftw3 -lnetcdf -lnetcdff
 else
 ifeq (${numcore},1)
 	COMPILER	= gfortran
@@ -34,8 +34,8 @@ endif
 COMPFLAGS	= -ffree-line-length-none -x f95-cpp-input -c -O3\
 	  -I/usr/include \
               #-C #-pg
-LIBS		= gtd2d_libinter_cfun.a \
-	  -L/usr/lib \
+LIBS		= gtd2d_libinter_cfunvec.a \
+	  -L/usr/lib -L/usr/local/MATLAB/R2019a/sys/os/glnxa64 -lm -liomp5\
 	  cheby.o -lfftw3 -llapack -lnetcdff \
 	  # -lblas -lcurl
 UNDER_SCOR = -fno-underscoring
