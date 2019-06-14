@@ -28,8 +28,8 @@ Drz(:,1)=-interpn(G12_mesh,G21_mesh,G11_mesh,G22_mesh,loadmat.res_array(:,:,:,:,
 Dzz(:,1)=interpn(G12_mesh,G21_mesh,G11_mesh,G22_mesh,loadmat.res_array(:,:,:,:,3),Grz_norm,Gzr_norm,Grr_norm,Gzz_norm,'linear');
 
 %% Interpolation eavg
-er(:,1)=interp1(loadmat.omega_e3_col,loadmat.e1_col,omega_e3,'spline');
-ez(:,1)=-interp1(loadmat.omega_e3_col,loadmat.e2_col,omega_e3,'spline');
+er(:,1)=interp1(loadmat.omega_e3_col,loadmat.e1_col,omega_e3,'v5cubic');
+ez(:,1)=-interp1(loadmat.omega_e3_col,loadmat.e2_col,omega_e3,'v5cubic');
 
 end
 

@@ -25,6 +25,8 @@ endif
 
 COMPFLAGS	= -cpp -c -O3 -heap-arrays 1024 -mcmodel=medium -I/apps/netcdf/4.4.4-fortran/include
 LIBS = -mkl -L/apps/netcdf/4.4.4-fortran/lib -lm cheby.o -lfftw3 -lnetcdf -lnetcdff
+C_COMPILER = icc
+C_COMPFLAGS = -c -O3
 else
 ifeq (${numcore},1)
 	COMPILER	= gfortran
@@ -38,7 +40,7 @@ LIBS		= \
 	  -L/usr/lib \
 	  cheby.o -lfftw3 -llapack -lnetcdff \
 	  # -lblas -lcurl
-UNDER_SCOR = -fno-underscoring
+UNDER_SCOR =
 C_COMPILER = gcc
 C_COMPFLAGS = -c -O3
 endif

@@ -30,6 +30,7 @@ winscp.com /command ^
  "cd %uploadDirectory%"^
  "put *.pbs ./"^
  "put state.cdf.in ./"^
+ "put GTD_lib.cdf ./"^
  "put parallel.h ./"^
  "put Makefile ./"^
  "put num_core.sh ./"^

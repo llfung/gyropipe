@@ -15,12 +15,14 @@ persistent loadmat G21_mesh2 G12_mesh2 e1_array2 e2_array2 G12_mesh G11_mesh G21
 
 %% Get omega in (r,theta,z)
 Diffrz=zeros(5,1);
-Grz=reshape([Grz_flat -Grz_flat(1)],2,2);
+% Grz=reshape([Grz_flat -Grz_flat(1)],2,2);
 
-G11=Grz(1,1);
-G12=-Grz(1,2);
-G21=-Grz(2,1);
-
+% G11=Grz(1,1);
+% G12=-Grz(1,2);
+% G21=-Grz(2,1);
+G11=Grz_flat(1);
+G21=-Grz_flat(2);
+G12=-Grz_flat(3);
 %% Interpolate Database
 for i=1:loadmat.NBvar
      Diffrz(i)=interp3(G12_mesh,G11_mesh,G21_mesh,loadmat.res_array(:,:,:,i),G12,G11,G21,'spline');
@@ -33,4 +35,3 @@ Diffrz(5)=interp2(G21_mesh2,G12_mesh2,e2_array2,G21,G12,'spline');
 Diffrz(5)=-Diffrz(5);
 Diffrz(2)=-Diffrz(2);
 end
-
