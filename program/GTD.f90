@@ -3,6 +3,7 @@
 !*************************************************************************
 #include "../parallel.h"
   module GTD
+    use netcdf
     use velocity
     use variables
     implicit none
@@ -18,67 +19,107 @@
 
     type (coll)    :: GTD_er_col, GTD_et_col, GTD_ez_col, GTD_grade, GTD_lapH ! See nonlinear>non_temperature
 
-    INTEGER        :: II,JJ,KK
+    INTEGER        :: II,JJ,KK, insize
     LOGICAL        :: EXTRAPOLATE_FLAG
 
-    !DOUBLE PRECISION :: GTD_G(0:3), GTD_G_(0:3), Diff(0:4)
-    INTEGER :: insize(1), outsize(1)
+    INTEGER            :: file_id
+    INTEGER, PARAMETER :: G12_len = 97
+    INTEGER, PARAMETER :: G21_len = 13
+    INTEGER, PARAMETER :: G11_len = 13
+    INTEGER, PARAMETER :: G22_len = 13
+    INTEGER, PARAMETER :: omega_e3_len = 205
+
+    DOUBLE PRECISION :: G12(G12_len),G21(G21_len),G11(G11_len),G22(G22_len)
+    DOUBLE PRECISION :: D11(G12_len,G21_len,G11_len,G22_len)
+    DOUBLE PRECISION :: D12(G12_len,G21_len,G11_len,G22_len)
+    DOUBLE PRECISION :: D22(G12_len,G21_len,G11_len,G22_len)
+    DOUBLE PRECISION :: D11VV((G12_len+2)*(G21_len+2)*(G11_len+2)*(G22_len+2))
+    DOUBLE PRECISION :: D12VV((G12_len+2)*(G21_len+2)*(G11_len+2)*(G22_len+2))
+    DOUBLE PRECISION :: D22VV((G12_len+2)*(G21_len+2)*(G11_len+2)*(G22_len+2))
+
+    DOUBLE PRECISION :: e1(omega_e3_len),e2(omega_e3_len),omg3(omega_e3_len)
   contains
 !------------------------------------------------------------------------
 !  Algorithm for computing D_T from G=Grad(u) at BC for no-flux condition of H
 !------------------------------------------------------------------------
     subroutine GTD_compute_bc()
-      DOUBLE PRECISION :: loc_G(i_pZ*i_Th,0:3)
-      DOUBLE PRECISION :: loc_Drr(i_pZ*i_Th,1),loc_Drz(i_pZ*i_Th,1),loc_Dzz(i_pZ*i_Th,1)
-      DOUBLE PRECISION :: loc_er(i_pZ*i_Th,1),loc_ez(i_pZ*i_Th,1)
+      DOUBLE PRECISION :: loc_G(i_pZ*i_Th)
+      DOUBLE PRECISION :: loc_D11(i_pZ*i_Th,1,1),loc_D12(i_pZ*i_Th,1,1)
+      DOUBLE PRECISION ::  loc_e1(i_pZ*i_Th,1,1)
+      DOUBLE PRECISION :: loc_Drr(i_pZ*i_Th,1,1),loc_Drz(i_pZ*i_Th,1,1),loc_Dzz(i_pZ*i_Th,1,1)
+      DOUBLE PRECISION ::  loc_er(i_pZ*i_Th,1,1),loc_ez(i_pZ*i_Th,1,1)
+
       if (mpi_rnk/=(_Nr-1)) return
-      loc_G(:,:)=0d0
+      loc_G(:)=0d0
 
-      insize(1)=i_pZ*i_Th
+      insize=i_pZ*i_Th
+      ! call interp4lin(G12,G21,G11,G22,D11, &
+      ! -vel_Grz%Re(:,:,mes_D%pN)/d_dr,loc_G(:,1),vel_Grr%Re(:,:,mes_D%pN)/d_dr,loc_G(:,2), loc_D11, insize)
+      ! call interp4lin(G12,G21,G11,G22,D12, &
+      ! -vel_Grz%Re(:,:,mes_D%pN)/d_dr,loc_G(:,1),vel_Grr%Re(:,:,mes_D%pN)/d_dr,loc_G(:,2), loc_D12, insize)
 
-      call gtd2d_libinter_cfunvec(vel_Grr%Re(:,:,mes_D%pN)/d_dr,insize, &
-      loc_G(:,1),insize, &
-      vel_Grz%Re(:,:,mes_D%pN)/d_dr,insize, &
-      loc_G(:,3),insize, &
-      loc_Drr,outsize, &
-      loc_Drz,outsize, &
-      loc_Dzz,outsize, &
-      loc_er,outsize, &
-      loc_ez,outsize)
+      call interp4_interp(G12,G21,G11,G22,D11VV, &
+      -vel_Grz%Re(:,:,mes_D%pN)/d_dr,loc_G,vel_Grr%Re(:,:,mes_D%pN)/d_dr,loc_G, loc_D11, insize)
+      call interp4_interp(G12,G21,G11,G22,D12VV, &
+      -vel_Grz%Re(:,:,mes_D%pN)/d_dr,loc_G,vel_Grr%Re(:,:,mes_D%pN)/d_dr,loc_G, loc_D12, insize)
+      call interp1in(omg3,e1,-vel_Grz%Re(:,:,mes_D%pN)/d_dr,loc_e1, insize)
 
-      GTD_Drr_bc%Re=RESHAPE(loc_Drr,(/i_pZ,i_Th/))
+
+      GTD_Drr_bc%Re= RESHAPE(loc_D11,(/i_pZ,i_Th/))
       GTD_Drt_bc%Re=0d0
-      GTD_Drz_bc%Re=RESHAPE(loc_Drz,(/i_pZ,i_Th/))
-      GTD_er_bc %Re=RESHAPE(loc_er,(/i_pZ,i_Th/))
+      GTD_Drz_bc%Re=-RESHAPE(loc_D12,(/i_pZ,i_Th/))
+      GTD_er_bc %Re= RESHAPE(loc_e1,(/i_pZ,i_Th/))
+
+
     end subroutine GTD_compute_bc
 !------------------------------------------------------------------------
 !  Main Algorithm for computing D_T from G=Grad(u)
 !------------------------------------------------------------------------
     subroutine GTD_compute()
-      DOUBLE PRECISION :: loc_Drr(mes_D%pN*i_pZ*i_Th,1,1),loc_Drz(mes_D%pN*i_pZ*i_Th,1,1),loc_Dzz(mes_D%pN*i_pZ*i_Th,1,1)
-      DOUBLE PRECISION :: loc_er(mes_D%pN*i_pZ*i_Th,1,1),loc_ez(mes_D%pN*i_pZ*i_Th,1,1)
-      ! if ((MAXVAL(dabs(loc_G(:,0)))>0.25d0 .or. MAXVAL(dabs(loc_G(:,1)))>0.25d0 .or. MAXVAL(dabs(loc_G(:,3)))>0.25d0 .or. MINVAL(loc_G(:,2))<-2.8d0 .or. MAXVAL(loc_G(:,2))>1.4d0) .and. .NOT.(EXTRAPOLATE_FLAG)) then
-      !   print*,' Extrapolating GTD!'
-      !   EXTRAPOLATE_FLAG=.TRUE.
-      ! end if
+      type(phys) :: loc_omg3
+      DOUBLE PRECISION :: loc_D11(mes_D%pN*i_pZ*i_Th,1,1),loc_D12(mes_D%pN*i_pZ*i_Th,1,1),loc_D22(mes_D%pN*i_pZ*i_Th,1,1)
+      DOUBLE PRECISION ::  loc_e1(mes_D%pN*i_pZ*i_Th,1,1), loc_e2(mes_D%pN*i_pZ*i_Th,1,1)
+      ! DOUBLE PRECISION :: loc_G11(mes_D%pN*i_pZ*i_Th,1,1),loc_G21(mes_D%pN*i_pZ*i_Th,1,1)
+      ! DOUBLE PRECISION :: loc_G12(mes_D%pN*i_pZ*i_Th,1,1),loc_G22(mes_D%pN*i_pZ*i_Th,1,1)
 
-      insize(1)=mes_D%pN*i_pZ*i_Th
 
-      call gtd2d_libinter_cfunvec(vel_Grr%Re/d_dr,insize, &
-      vel_Gzr%Re/d_dr,insize, &
-      vel_Grz%Re/d_dr,insize, &
-      vel_Gzz%Re/d_dr,insize, &
-      loc_Drr,outsize, &
-      loc_Drz,outsize, &
-      loc_Dzz,outsize, &
-      loc_er,outsize, &
-      loc_ez,outsize)
+      if ((MAXVAL(dabs(vel_Grr%Re))>(0.15d0*d_dr) .or. MAXVAL(dabs(vel_Gzr%Re))>(0.15d0*d_dr) .or. &
+      MAXVAL(dabs(vel_Gzz%Re))>(0.3d0*d_dr) .or. MINVAL(vel_Grz%Re)<(-3d0*d_dr) .or. MAXVAL(vel_Grz%Re)>(1.4d0*d_dr)) &
+       .and. .NOT.(EXTRAPOLATE_FLAG)) then
+        print*,' Extrapolating GTD!'
+        EXTRAPOLATE_FLAG=.TRUE.
+      end if
 
-      GTD_Drr%Re=RESHAPE(loc_Drr,(/i_pZ,i_Th,mes_D%pN/))
-      GTD_Drz%Re=RESHAPE(loc_Drz,(/i_pZ,i_Th,mes_D%pN/))
-      GTD_Dzz%Re=RESHAPE(loc_Dzz,(/i_pZ,i_Th,mes_D%pN/))
-      GTD_er %Re=RESHAPE( loc_er,(/i_pZ,i_Th,mes_D%pN/))
-      GTD_ez %Re=RESHAPE( loc_ez,(/i_pZ,i_Th,mes_D%pN/))
+      insize= mes_D%pN*i_pZ*i_Th
+      loc_omg3%Re=-vel_Grz%Re/d_dr+vel_Gzr%Re/d_dr
+      ! loc_G11= RESHAPE(vel_Grr%Re/d_dr,(/i_pZ*i_Th*mes_D%pN,1,1/))
+      ! loc_G12=-RESHAPE(vel_Grz%Re/d_dr,(/i_pZ*i_Th*mes_D%pN,1,1/))
+      ! loc_G21=-RESHAPE(vel_Gzr%Re/d_dr,(/i_pZ*i_Th*mes_D%pN,1,1/))
+      ! loc_G22= RESHAPE(vel_Gzz%Re/d_dr,(/i_pZ*i_Th*mes_D%pN,1,1/))
+
+      ! call interp4lin(G12,G21,G11,G22,D11, &
+      ! loc_G12,loc_G21,loc_G11,loc_G22, loc_D11, insize)
+      ! call interp4lin(G12,G21,G11,G22,D12, &
+      ! loc_G12,loc_G21,loc_G11,loc_G22, loc_D12, insize)
+      ! call interp4lin(G12,G21,G11,G22,D22, &
+      ! loc_G12,loc_G21,loc_G11,loc_G22, loc_D22, insize)
+
+      call interp4_interp(G12,G21,G11,G22,D11VV, &
+      -vel_Grz%Re/d_dr,-vel_Gzr%Re/d_dr,vel_Grr%Re/d_dr,vel_Gzz%Re/d_dr, loc_D11, insize)
+      call interp4_interp(G12,G21,G11,G22,D12VV, &
+      -vel_Grz%Re/d_dr,-vel_Gzr%Re/d_dr,vel_Grr%Re/d_dr,vel_Gzz%Re/d_dr, loc_D12, insize)
+      call interp4_interp(G12,G21,G11,G22,D22VV, &
+      -vel_Grz%Re/d_dr,-vel_Gzr%Re/d_dr,vel_Grr%Re/d_dr,vel_Gzz%Re/d_dr, loc_D22, insize)
+
+      call interp1in(omg3,e1,loc_omg3%Re,loc_e1, insize)
+      call interp1in(omg3,e2,loc_omg3%Re,loc_e2, insize)
+
+      GTD_Drr%Re= RESHAPE(loc_D11,(/i_pZ,i_Th,mes_D%pN/))
+      GTD_Drz%Re=-RESHAPE(loc_D12,(/i_pZ,i_Th,mes_D%pN/))
+      GTD_Dzz%Re= RESHAPE(loc_D22,(/i_pZ,i_Th,mes_D%pN/))
+      GTD_er %Re= RESHAPE( loc_e1,(/i_pZ,i_Th,mes_D%pN/))
+      GTD_ez %Re=-RESHAPE( loc_e2,(/i_pZ,i_Th,mes_D%pN/))
+
       GTD_Drt%Re=0d0
       GTD_Dtt%Re=0d0
       GTD_Dtz%Re=0d0
@@ -93,12 +134,94 @@
 !------------------------------------------------------------------------
     subroutine GTD_precompute()
 	    EXTRAPOLATE_FLAG=.FALSE.
-      call gtd2d_libinter_cfunvec_initialize()
+
+      !Open the CDF file
+      call GTD_open()
+
+      ! Read-in whole library
+      call GTD_read_e('G11_loop',G11,G11_len)
+      call GTD_read_e('G12_loop',G12,G12_len)
+      call GTD_read_e('G21_loop',G21,G21_len)
+      call GTD_read_e('G22_loop',G22,G22_len)
+      call GTD_read_e('omega_e3_col',omg3,omega_e3_len)
+
+      call GTD_read('D11',D11)
+      call GTD_read('D12',D12)
+      call GTD_read('D22',D22)
+      call GTD_read_e('e1_col',e1,omega_e3_len)
+      call GTD_read_e('e2_col',e2,omega_e3_len)
+      ! Close the CDF file
+      call GTD_close()
+
+#ifdef _MPI
+      call MPI_BCAST(G11, G11_len, MPI_DOUBLE_PRECISION, 0, mpi_comm_world, mpi_er)
+      call MPI_BCAST(G12, G12_len, MPI_DOUBLE_PRECISION, 0, mpi_comm_world, mpi_er)
+      call MPI_BCAST(G21, G21_len, MPI_DOUBLE_PRECISION, 0, mpi_comm_world, mpi_er)
+      call MPI_BCAST(G22, G22_len, MPI_DOUBLE_PRECISION, 0, mpi_comm_world, mpi_er)
+
+      call MPI_BCAST(D11, G12_len*G21_len*G11_len*G22_len, MPI_DOUBLE_PRECISION, 0, mpi_comm_world, mpi_er)
+      call MPI_BCAST(D12, G12_len*G21_len*G11_len*G22_len, MPI_DOUBLE_PRECISION, 0, mpi_comm_world, mpi_er)
+      call MPI_BCAST(D22, G12_len*G21_len*G11_len*G22_len, MPI_DOUBLE_PRECISION, 0, mpi_comm_world, mpi_er)
+
+      call MPI_BCAST(omg3, omega_e3_len, MPI_DOUBLE_PRECISION, 0, mpi_comm_world, mpi_er)
+      call MPI_BCAST(  e1, omega_e3_len, MPI_DOUBLE_PRECISION, 0, mpi_comm_world, mpi_er)
+      call MPI_BCAST(  e2, omega_e3_len, MPI_DOUBLE_PRECISION, 0, mpi_comm_world, mpi_er)
+#endif
+      if (mpi_rnk==0) print*, 'GTD variables Broadcase finished.'
+
+
+      call interp4_libgen(G12,G21,G11,G22,D11,D11VV)
+      call interp4_libgen(G12,G21,G11,G22,D12,D12VV)
+      call interp4_libgen(G12,G21,G11,G22,D22,D22VV)
+      ! call gtd2d_libinter_cfunvec_initialize()
+
     end subroutine GTD_precompute
 !------------------------------------------------------------------------
 !  Decollocate memory stuff for the MATLAB Coder generated library
 !------------------------------------------------------------------------
     subroutine GTD_closing()
-      call gtd2d_libinter_cfunvec_terminate()
+        ! call gtd2d_libinter_cfunvec_terminate()
     end subroutine GTD_closing
+
+
+    subroutine GTD_open()
+      INTEGER :: e , id, dimid
+
+      if (mpi_rnk/=0) return
+
+        e=nf90_open('GTD_lib.cdf',nf90_nowrite, file_id) !f is the returned netCDF id
+
+        if(e/=nf90_noerr) then
+           stop 'io: file not found!'
+        end if
+    end subroutine GTD_open
+
+    subroutine GTD_read(nm,res)
+      INTEGER :: e, id, dimid
+      character(*),     intent(in)  :: nm
+      DOUBLE PRECISION, intent(out) :: res(G12_len,G21_len,G11_len,G22_len)
+
+      if (mpi_rnk/=0) return
+      e=nf90_inq_varid(file_id,nm, id)
+      e=nf90_get_var(file_id,id,res)
+      print*, nm, ' read.'
+    end subroutine GTD_read
+    subroutine GTD_read_e(nm,res,inp_len)
+      INTEGER :: e, id, dimid
+      INTEGER, INTENT(IN) :: inp_len
+      character(*),     intent(in)  :: nm
+      DOUBLE PRECISION, intent(out) :: res(inp_len)
+
+      if (mpi_rnk/=0) return
+      e=nf90_inq_varid(file_id,nm, id)
+      e=nf90_get_var(file_id,id,res)
+      print*, nm, ' read.'
+    end subroutine GTD_read_e
+
+    subroutine GTD_close()
+      INTEGER :: e
+      if (mpi_rnk/=0) return
+          e=nf90_close(file_id)
+          print*, 'GTD_lib read and closed.'
+    end subroutine GTD_close
   end module GTD

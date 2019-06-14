@@ -7,7 +7,7 @@ numcore := $(shell ./num_core.sh)
 
 TRANSFORM	= fftw3
 MODSOBJ		= io.o meshs.o mpi.o nonlinear.o parameters.o \
-		  temperature.o timestep.o transform.o variables.o velocity.o GTD.o
+		  temperature.o timestep.o transform.o variables.o velocity.o GTD.o interp4.o interp1in.o
 
 #COMPILER	= g95 -C
 #COMPFLAGS	= -cpp -c -O3
@@ -24,7 +24,7 @@ else
 endif
 
 COMPFLAGS	= -cpp -c -O3 -heap-arrays 1024 -mcmodel=medium -I/apps/netcdf/4.4.4-fortran/include
-LIBS = gtd2d_libinter_cfunvec.a -mkl -L/apps/netcdf/4.4.4-fortran/lib -L/apps/local/MATLAB/R2018a/sys/os/glnxa64 -lm -liomp5 cheby.o -lfftw3 -lnetcdf -lnetcdff
+LIBS = -mkl -L/apps/netcdf/4.4.4-fortran/lib -lm cheby.o -lfftw3 -lnetcdf -lnetcdff
 else
 ifeq (${numcore},1)
 	COMPILER	= gfortran
@@ -34,11 +34,13 @@ endif
 COMPFLAGS	= -ffree-line-length-none -x f95-cpp-input -c -O3\
 	  -I/usr/include \
               #-C #-pg
-LIBS		= gtd2d_libinter_cfunvec.a \
-	  -L/usr/lib -L/usr/local/MATLAB/R2019a/sys/os/glnxa64 -lm -liomp5\
+LIBS		= \
+	  -L/usr/lib \
 	  cheby.o -lfftw3 -llapack -lnetcdff \
 	  # -lblas -lcurl
 UNDER_SCOR = -fno-underscoring
+C_COMPILER = gcc
+C_COMPFLAGS = -c -O3
 endif
 
 #------------------------------------------------------------------------
@@ -69,6 +71,7 @@ util : 	$(MODSOBJ) $(UTILDIR)/$(UTIL).f90
 #------------------------------------------------------------------------
 run :
 	cp state.cdf.in $(INSTDIR)
+	cp GTD_lib.cdf $(INSTDIR)
 	mv $(INSTDIR) $(RUNDIR)
 	ln -s $(CURDIR) $(RUNDIR)/gyropipe.ln
 	ln -sfn $(RUNDIR) ./rundir.ln
@@ -133,5 +136,11 @@ variables.o : $(PROGDIR)variables.f90 meshs.o
 velocity.o : $(PROGDIR)velocity.f90 timestep.o transform.o
 	$(COMPILER) $(COMPFLAGS) $(PROGDIR)velocity.f90
 
-GTD.o : $(PROGDIR)GTD.f90 velocity.o transform.o variables.o
+GTD.o : $(PROGDIR)GTD.f90 velocity.o transform.o variables.o interp4.o interp1in.o
 	$(COMPILER) $(UNDER_SCOR) $(COMPFLAGS) $(PROGDIR)GTD.f90
+
+interp4.o :: $(PROGDIR)interp4.c
+	$(C_COMPILER) $(C_COMPFLAGS) $(PROGDIR)interp4.c
+
+interp1in.o :: $(PROGDIR)interp1in.c
+	$(C_COMPILER) $(C_COMPFLAGS) $(PROGDIR)interp1in.c
