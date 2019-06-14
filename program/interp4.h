@@ -33,9 +33,9 @@
 
 
 /* Function Declarations */
-extern void interp4_libgen(const double x[N_X],  const double y[N_Y],    const double z[N_Z],  const double w[N_W], const double v[N_XYZW],
+extern void interp4_libgen_(const double x[N_X],  const double y[N_Y],    const double z[N_Z],  const double w[N_W], const double v[N_XYZW],
              double VV[N_XYZWP]);
-extern void interp4_interp(const double x[N_X],  const double y[N_Y],    const double z[N_Z],  const double w[N_W], const double VV[N_XYZWP],
+extern void interp4_interp_(const double x[N_X],  const double y[N_Y],    const double z[N_Z],  const double w[N_W], const double VV[N_XYZWP],
              const double xq[], const double yq[],   const double zq[], const double wq[],double vq[], const int *insiz);
 
 #endif

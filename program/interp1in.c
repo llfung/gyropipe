@@ -3,7 +3,7 @@
 #include "interp1in.h"
 
 /* Function Definitions */
-void interp1in(const double x[ONE_N_X], const double y[ONE_N_X], const double xi[], double
+void interp1in_(const double x[ONE_N_X], const double y[ONE_N_X], const double xi[], double
   yi[], const int *insiz)
 {
   double minx;

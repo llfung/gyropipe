@@ -79,8 +79,6 @@
       type(phys) :: loc_omg3
       DOUBLE PRECISION :: loc_D11(mes_D%pN*i_pZ*i_Th,1,1),loc_D12(mes_D%pN*i_pZ*i_Th,1,1),loc_D22(mes_D%pN*i_pZ*i_Th,1,1)
       DOUBLE PRECISION ::  loc_e1(mes_D%pN*i_pZ*i_Th,1,1), loc_e2(mes_D%pN*i_pZ*i_Th,1,1)
-      ! DOUBLE PRECISION :: loc_G11(mes_D%pN*i_pZ*i_Th,1,1),loc_G21(mes_D%pN*i_pZ*i_Th,1,1)
-      ! DOUBLE PRECISION :: loc_G12(mes_D%pN*i_pZ*i_Th,1,1),loc_G22(mes_D%pN*i_pZ*i_Th,1,1)
 
 
       if ((MAXVAL(dabs(vel_Grr%Re))>(0.15d0*d_dr) .or. MAXVAL(dabs(vel_Gzr%Re))>(0.15d0*d_dr) .or. &
@@ -92,10 +90,6 @@
 
       insize= mes_D%pN*i_pZ*i_Th
       loc_omg3%Re=-vel_Grz%Re/d_dr+vel_Gzr%Re/d_dr
-      ! loc_G11= RESHAPE(vel_Grr%Re/d_dr,(/i_pZ*i_Th*mes_D%pN,1,1/))
-      ! loc_G12=-RESHAPE(vel_Grz%Re/d_dr,(/i_pZ*i_Th*mes_D%pN,1,1/))
-      ! loc_G21=-RESHAPE(vel_Gzr%Re/d_dr,(/i_pZ*i_Th*mes_D%pN,1,1/))
-      ! loc_G22= RESHAPE(vel_Gzz%Re/d_dr,(/i_pZ*i_Th*mes_D%pN,1,1/))
 
       ! call interp4lin(G12,G21,G11,G22,D11, &
       ! loc_G12,loc_G21,loc_G11,loc_G22, loc_D11, insize)

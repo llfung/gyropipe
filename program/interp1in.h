@@ -7,7 +7,7 @@
 #define ONE_N_X 205
 
 /* Function Declarations */
-extern void interp1in(const double x[ONE_N_X], const double y[ONE_N_X],
+extern void interp1in_(const double x[ONE_N_X], const double y[ONE_N_X],
   const double xi[], double yi[], const int *insiz);
 
 #endif
