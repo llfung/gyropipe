@@ -30,6 +30,7 @@
     INTEGER, PARAMETER :: omega_e3_len = 205
 
     DOUBLE PRECISION :: G12(G12_len),G21(G21_len),G11(G11_len),G22(G22_len)
+    DOUBLE PRECISION :: G11_lim(2),G12_lim(2),G21_lim(2),G22_lim(2)
     DOUBLE PRECISION :: D11(G12_len,G21_len,G11_len,G22_len)
     DOUBLE PRECISION :: D12(G12_len,G21_len,G11_len,G22_len)
     DOUBLE PRECISION :: D22(G12_len,G21_len,G11_len,G22_len)
@@ -81,10 +82,37 @@
       DOUBLE PRECISION ::  loc_e1(mes_D%pN*i_pZ*i_Th,1,1), loc_e2(mes_D%pN*i_pZ*i_Th,1,1)
 
 
-      if ((MAXVAL(dabs(vel_Grr%Re))>(0.15d0*d_dr) .or. MAXVAL(dabs(vel_Gzr%Re))>(0.15d0*d_dr) .or. &
-      MAXVAL(dabs(vel_Gzz%Re))>(0.3d0*d_dr) .or. MINVAL(vel_Grz%Re)<(-3d0*d_dr) .or. MAXVAL(vel_Grz%Re)>(1.4d0*d_dr)) &
+      if ((MINVAL( vel_Grr%Re)<G11_lim(1) .or. MAXVAL( vel_Grr%Re)>G11_lim(2) .or. &
+           MINVAL( vel_Gzz%Re)<G22_lim(1) .or. MAXVAL( vel_Gzz%Re)>G22_lim(2) .or. &
+           MINVAL(-vel_Grz%Re)<G12_lim(1) .or. MAXVAL(-vel_Grz%Re)>G12_lim(2) .or. &
+           MINVAL(-vel_Gzr%Re)<G21_lim(1) .or. MAXVAL(-vel_Gzr%Re)>G21_lim(2) ) &
        .and. .NOT.(EXTRAPOLATE_FLAG)) then
         print*,' Extrapolating GTD!'
+
+        if (MINVAL( vel_Grr%Re)<G11_lim(1)) then
+          print*,' Grr: ', MINVAL( vel_Grr%Re),' smaller than ', G11_lim(1)
+        end if
+        if (MINVAL(-vel_Grz%Re)<G12_lim(1)) then
+          print*,'-Grz: ', MINVAL(-vel_Grz%Re),' smaller than ', G12_lim(1)
+        end if
+        if (MINVAL(-vel_Gzr%Re)<G21_lim(1)) then
+          print*,'-Gzr: ', MINVAL(-vel_Gzr%Re),' smaller than ', G21_lim(1)
+        end if
+        if (MINVAL( vel_Gzz%Re)<G22_lim(1)) then
+          print*,' Gzz: ', MINVAL( vel_Gzz%Re),' smaller than ', G22_lim(1)
+        end if
+        if (MAXVAL( vel_Grr%Re)>G11_lim(2)) then
+          print*,' Grr: ', MAXVAL( vel_Grr%Re),'  bigger than ', G11_lim(2)
+        end if
+        if (MAXVAL(-vel_Grz%Re)>G12_lim(2)) then
+          print*,'-Grz: ', MAXVAL(-vel_Grz%Re),'  bigger than ', G12_lim(2)
+        end if
+        if (MAXVAL(-vel_Gzr%Re)>G21_lim(2)) then
+          print*,'-Gzr: ', MAXVAL(-vel_Gzr%Re),'  bigger than ', G21_lim(2)
+        end if
+        if (MAXVAL( vel_Gzz%Re)>G22_lim(2)) then
+          print*,' Gzz: ', MAXVAL( vel_Gzz%Re),'  bigger than ', G22_lim(2)
+        end if
         EXTRAPOLATE_FLAG=.TRUE.
       end if
 
@@ -163,11 +191,22 @@
 #endif
       if (mpi_rnk==0) print*, 'GTD variables Broadcase finished.'
 
+      ! Calculate limits
+      G11_lim(1)=G11(1)*d_dr
+      G11_lim(2)=G11(G11_len)*d_dr
+      G12_lim(1)=G12(1)*d_dr
+      G12_lim(2)=G12(G12_len)*d_dr
+      G21_lim(1)=G21(1)*d_dr
+      G21_lim(2)=G21(G21_len)*d_dr
+      G22_lim(1)=G22(1)*d_dr
+      G22_lim(2)=G22(G22_len)*d_dr
 
       call interp4_libgen(G12,G21,G11,G22,D11,D11VV)
       call interp4_libgen(G12,G21,G11,G22,D12,D12VV)
       call interp4_libgen(G12,G21,G11,G22,D22,D22VV)
       ! call gtd2d_libinter_cfunvec_initialize()
+
+
 
     end subroutine GTD_precompute
 !------------------------------------------------------------------------
