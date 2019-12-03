@@ -14,7 +14,7 @@
    double precision :: tim_dterr, tim_dterr_scalar, tim_dterr_bc
    integer          :: tim_it
    integer          :: tim_step
-   double precision :: tim_corr_dt
+   double precision :: tim_corr_dt, tim_corr_dt_scalar
    double precision :: tim_cfl_dt
    integer          :: tim_cfl_dir
    logical          :: tim_new_dt   ! If we have updated the timestep from last time
@@ -282,11 +282,13 @@
       double precision, save :: lasterr
 
       if(tim_it==1) then                                            ! Just come out from 1st Corrector step
-         tim_corr_dt = tim_dt * dsqrt( d_dterr/tim_dterr )
          lasterr = 1d99
       end if
-
-      if(tim_dt<1d-9 .and. tim_step>30) then
+      if(tim_it<5) then
+        tim_corr_dt = tim_dt * dsqrt( d_dterr/tim_dterr )
+        tim_corr_dt_scalar = tim_dt * dsqrt( d_dterr_scalar/tim_dterr_scalar )
+      end if
+      if(tim_dt<1d-11 .and. tim_step>30) then
          if(mpi_rnk==0) print*, 'tim_check_cgce: dt --> 0 !!!?'
          tim_step = i_maxtstep-1                                    ! Exit the run
          tim_it = 0
@@ -311,14 +313,24 @@
       else if(tim_dterr_scalar>d_dterr_scalar) then
         ! print*, tim_it, 'temp_dterr: ', tim_dterr_scalar
          tim_it = tim_it + 1
-      ! else if(tim_dterr_bc>d_dterr_bc .and. tim_step>3) then
-      !    ! print*, tim_it, 'bc_dterr: ', tim_dterr_bc
-      !    tim_it = tim_it + 1
+      else if(tim_dterr_bc>d_dterr_bc .and. tim_step>3) then
+         ! print*, tim_it, 'bc_dterr: ', tim_dterr_bc
+         tim_it = tim_it + 1
       else
               ! if (mpi_rnk==0) print*, tim_it
          if(mpi_rnk==0 .and. modulo(tim_step,i_save_rate2)==0) then
-            if(d_timestep> 0d0) print*,' step=',tim_step,' its=',tim_it, 'temp_dterr: ', tim_dterr_scalar, 'bc_dterr: ', tim_dterr_bc
-            if(d_timestep<=0d0) print*,' step=',tim_step,' its=',tim_it,' dt=',real(tim_dt) , 'temp_dterr: ', tim_dterr_scalar, 'bc_dterr: ', tim_dterr_bc
+            if(d_timestep> 0d0) then
+              print*,' step=',tim_step,' its=',tim_it
+              print*,'   temp_dterr: ', tim_dterr_scalar
+              print*,'     bc_dterr: ', tim_dterr_bc
+              print*,'    tim_dterr: ', tim_dterr
+            end if
+            if(d_timestep<=0d0) then
+              print*,' step=',tim_step,' its=',tim_it,' dt=',real(tim_dt)
+              print*,'   temp_dterr: ', tim_dterr_scalar
+              print*,'     bc_dterr: ', tim_dterr_bc
+              print*,'    tim_dterr: ', tim_dterr
+            end if
          end if
          tim_it = 0
       end if
@@ -339,6 +351,7 @@
                            dt = min(dt, tim_cfl_dt*0.1d0)       ! At start of iteration, take Courant = 0.1
       if(tim_cfl_dt >0d0)  dt = min(dt, tim_cfl_dt*d_courant)   ! Use Courant number
       if(tim_corr_dt>0d0)  dt = min(dt, tim_corr_dt*0.95d0)     ! Also limit time step small enough for corrector iteration residue to be small
+      if(tim_corr_dt_scalar>0d0)  dt = min(dt, tim_corr_dt_scalar*0.95d0) ! Also limit time step small enough for corrector iteration residue to be small
 
       i = i - 1
       ! Do not change step if within -5% of last iteration or +10% of last iteration

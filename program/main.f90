@@ -79,6 +79,11 @@
       if(mpi_rnk==0) then
          terminate = .false.
 
+         if(EXTRAPOLATE_FLAG) then
+            terminate = .true.
+            print*, 'GTD Library Extrapolating!'
+         end if
+
          if(tim_step==i_maxtstep) then
             terminate = .true.
             print*, 'maxtstep reached!'

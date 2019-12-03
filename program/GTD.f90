@@ -23,11 +23,11 @@
     LOGICAL        :: EXTRAPOLATE_FLAG
 
     INTEGER            :: file_id
-    INTEGER, PARAMETER :: G12_len = 97
-    INTEGER, PARAMETER :: G21_len = 13
-    INTEGER, PARAMETER :: G11_len = 13
-    INTEGER, PARAMETER :: G22_len = 13
-    INTEGER, PARAMETER :: omega_e3_len = 205
+    INTEGER, PARAMETER :: G12_len = 421
+    INTEGER, PARAMETER :: G21_len = 41
+    INTEGER, PARAMETER :: G11_len = 41
+    INTEGER, PARAMETER :: G22_len = 41
+    INTEGER, PARAMETER :: omega_e3_len = 461
 
     DOUBLE PRECISION :: G12(G12_len),G21(G21_len),G11(G11_len),G22(G22_len)
     DOUBLE PRECISION :: G11_lim(2),G12_lim(2),G21_lim(2),G22_lim(2)
@@ -80,14 +80,14 @@
       type(phys) :: loc_omg3
       DOUBLE PRECISION :: loc_D11(mes_D%pN*i_pZ*i_Th,1,1),loc_D12(mes_D%pN*i_pZ*i_Th,1,1),loc_D22(mes_D%pN*i_pZ*i_Th,1,1)
       DOUBLE PRECISION ::  loc_e1(mes_D%pN*i_pZ*i_Th,1,1), loc_e2(mes_D%pN*i_pZ*i_Th,1,1)
-
+      LOGICAL :: flag_temp
 
       if ((MINVAL( vel_Grr%Re)<G11_lim(1) .or. MAXVAL( vel_Grr%Re)>G11_lim(2) .or. &
            MINVAL( vel_Gzz%Re)<G22_lim(1) .or. MAXVAL( vel_Gzz%Re)>G22_lim(2) .or. &
            MINVAL(-vel_Grz%Re)<G12_lim(1) .or. MAXVAL(-vel_Grz%Re)>G12_lim(2) .or. &
            MINVAL(-vel_Gzr%Re)<G21_lim(1) .or. MAXVAL(-vel_Gzr%Re)>G21_lim(2) ) &
        .and. .NOT.(EXTRAPOLATE_FLAG)) then
-        print*,' Extrapolating GTD!'
+        !print*,' Extrapolating GTD!'
 
         if (MINVAL( vel_Grr%Re)<G11_lim(1)) then
           print*,' Grr: ', MINVAL( vel_Grr%Re),' smaller than ', G11_lim(1)
@@ -114,6 +114,7 @@
           print*,' Gzz: ', MAXVAL( vel_Gzz%Re),'  bigger than ', G22_lim(2)
         end if
         EXTRAPOLATE_FLAG=.TRUE.
+
       end if
 
       insize= mes_D%pN*i_pZ*i_Th
@@ -148,8 +149,13 @@
       GTD_et %Re=0d0
 
 #ifdef _MPI
-      call mpi_barrier(mpi_comm_world, mpi_er)
+      call mpi_allreduce(EXTRAPOLATE_FLAG,flag_temp,1,mpi_logical, &
+      mpi_lor, mpi_comm_world, mpi_er)
+      if (flag_temp) then
+        EXTRAPOLATE_FLAG=flag_temp
+      end if
 #endif
+    !if (mpi_rnk==0 .and. EXTRAPOLATE_FLAG) print*,' Extrapolating GTD!'
     end subroutine GTD_compute
 !------------------------------------------------------------------------
 !  Initialise stuff for the module and the MATLAB Coder generated library

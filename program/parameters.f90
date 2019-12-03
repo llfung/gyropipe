@@ -14,19 +14,19 @@
    implicit none
    save
 
-   integer,          parameter :: i_N           = 60
-   integer,          parameter :: i_K           = 2
+   integer,          parameter :: i_N           = 80
+   integer,          parameter :: i_K           = 16
    integer,          parameter :: i_M           = 1
    integer,          parameter :: i_Mp          = 1
 
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
-   double precision            :: d_Re          = 0.160428182636631d0
-   double precision            :: d_Ri          = 41.94581870462980d0
-   double precision, parameter :: d_Vs          = 0.785398163397448d0 ! Changes with flow rate, as always normalised by bulk flow
-   double precision, parameter :: d_dr          = 1.670529426908860d0
+   double precision            :: d_Re          = 0.401070456591576d0
+   double precision            :: d_Ri          = 4.322797117392170d0
+   double precision, parameter :: d_Vs          = 0.314159265358979d0        ! Changes with flow rate, as always normalised by bulk flow
+   double precision, parameter :: d_dr          = 0.668211770763543d0
    double precision            :: d_Pe          = 1d0/d_Vs/d_Vs*d_dr
-   double precision            :: d_Pe_dm       = 4d0/d_Vs/d_Vs*d_dr
-   double precision            :: d_alpha       = 0.75d0
+   double precision            :: d_Pe_dm       = 3d0/d_Vs/d_Vs*d_dr
+   double precision            :: d_alpha       = 0.1d0
    logical,          parameter :: b_const_flux  = .true.
    logical,          parameter :: b_mirrorsym   = .false.
    logical,          parameter :: b_shiftrefl   = .false.
@@ -36,14 +36,14 @@
    double precision, parameter :: d_minE3d      = 1d-5
 
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
-   integer,          parameter :: i_save_rate1  = 100!100
-   integer,          parameter :: i_save_rate2  = 10
-   integer,          parameter :: i_maxtstep    = 300
+   integer,          parameter :: i_save_rate1  = 5000!100
+   integer,          parameter :: i_save_rate2  = 500
+   integer,          parameter :: i_maxtstep    = 49000000
    double precision, parameter :: d_maxt        = -1d0
-   double precision, parameter :: d_cpuhours    = 1d99 !90d0
-   double precision, parameter :: d_time        = 0d0 !-1d0
+   double precision, parameter :: d_cpuhours    = 71.7d0
+   double precision, parameter :: d_time        = -1d0
    double precision, parameter :: d_timestep    = -1d0 !1d-3 !0.05d0
-   double precision, parameter :: d_maxdt       = 1d-3 !1d99
+   double precision, parameter :: d_maxdt       = 1d-4 !1d99
    double precision, parameter :: d_dterr       = 1d-8 !1d99
    double precision, parameter :: d_dterr_scalar= 2d-9 !1d99
    double precision, parameter :: d_dterr_bc    = 1d99 !1d99

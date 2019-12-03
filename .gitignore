@@ -24,6 +24,7 @@
 *.lai
 *.la
 *.a
+*.a*
 *.lib
 
 # Executables
@@ -37,6 +38,7 @@
 *.cdf.*
 *.dat
 *.cdf.dat
+*.zip
 
 # other output files
 main.info

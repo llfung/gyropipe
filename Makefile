@@ -24,7 +24,7 @@ else
 endif
 
 COMPFLAGS	= -cpp -c -O3 -heap-arrays 1024 -mcmodel=medium -I/apps/netcdf/4.4.4-fortran/include
-LIBS = -mkl -L/apps/netcdf/4.4.4-fortran/lib -lm cheby.o -lfftw3 -lnetcdf -lnetcdff
+LIBS = -mkl -L/apps/netcdf/4.4.4-fortran/lib -lnetcdff -L/apps/netcdf/4.4.1-c/lib -lm cheby.o -lfftw3 -lnetcdf -lnetcdf
 C_COMPILER = icc
 C_COMPFLAGS = -c -O3
 else

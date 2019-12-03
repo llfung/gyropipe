@@ -207,9 +207,22 @@
       subroutine non_maxtstep()
          double precision :: d,mx, dt(6),dt_(6), r(i_N)
          integer :: n, n__
+         type (coll) ::  cr,ct,cz,cdivr,cdivt,cdivz
+         type (phys) ::  pdivr,pdivt,pdivz
 
          r = mes_D%r(:,1)
          dt = 1d99
+
+         call tra_phys2coll(GTD_Drr,cr,GTD_Drt,ct,GTD_Drz,cz)
+         call var_coll_div(cr,ct,cz,cdivr)
+
+         call tra_phys2coll(GTD_Drt,cr,GTD_Dtt,ct,GTD_Dtz,cz)
+         call var_coll_div(cr,ct,cz,cdivt)
+
+         call tra_phys2coll(GTD_Drz,cr,GTD_Dtz,ct,GTD_Dzz,cz)
+         call var_coll_div(cr,ct,cz,cdivz)
+
+         call tra_coll2phys(cdivr,pdivr,cdivt,pdivt,cdivz,pdivz)
 
          do n = 1, mes_D%pN
             n__ = n+mes_D%pNi-1
@@ -223,21 +236,21 @@
             end if
             mx = maxval( dabs(vel_r%Re(:,:,n)) )
             if(mx/=0d0) dt(1) = min( dt(1), d/mx )
-            mx = maxval( dabs(p1%Re(:,:,n)) ) + d_Vs
+            mx = maxval( dabs(p1%Re(:,:,n)+pdivr%Re(:,:,n)/d_Pe) ) + d_Vs
 !            mx = p1_max+d_Vs
             if(mx/=0d0) dt(4) = min( dt(4), d/mx )
 
             d = 2d0*d_PI/dble(i_Th*i_Mp)		!---  *r_(n)? ---
             mx = maxval( dabs(vel_t%Re(:,:,n)) )
             if(mx/=0d0) dt(2) = min( dt(2), d/mx )
-            mx = maxval( dabs(p2%Re(:,:,n)) ) + d_Vs
+            mx = maxval( dabs(p2%Re(:,:,n)+pdivt%Re(:,:,n)/d_Pe) ) + d_Vs
 !            mx = p2_max+d_Vs
             if(mx/=0d0) dt(5) = min( dt(5), d/mx )
 
             d = 2d0*d_PI/(d_alpha*i_Z)
             mx = maxval( dabs(vel_z%Re(:,:,n) + vel_U(n__)) )
             if(mx/=0d0) dt(3) = min( dt(3), d/mx )
-            mx = maxval( dabs(p3%Re(:,:,n) + vel_U(n__)) ) + d_Vs
+            mx = maxval( dabs(p3%Re(:,:,n) - vel_U(n__)+(pdivz%Re(:,:,n)+GTD_Drz%Re(:,:,n)/r(n__))/d_Pe) ) + d_Vs
 !            mx =  dabs(vel_U(n__)) +d_Vs+p3_max
             if(mx/=0d0) dt(6) = min( dt(6), d/mx )
          end do

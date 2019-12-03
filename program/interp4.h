@@ -15,21 +15,21 @@
 /* Include files */
 #include <stddef.h>
 #include <stdlib.h>
-#define N_X 97
-#define N_Y 13
-#define N_Z 13
-#define N_W 13
+#define N_X 421
+#define N_Y 41
+#define N_Z 41
+#define N_W 41
 
-#define N_XYZW 213109
+#define N_XYZW 29015741
 
-#define N_XP 99
-#define N_YP 15
-#define N_ZP 15
-#define N_WP 15
+#define N_XP 423
+#define N_YP 43
+#define N_ZP 43
+#define N_WP 43
 
-#define N_XYP 1485
-#define N_XYZP 22275
-#define N_XYZWP 334125
+#define N_XYP 18189
+#define N_XYZP 782127
+#define N_XYZWP 33631461
 
 
 /* Function Declarations */
